@@ -1,0 +1,152 @@
+{
+  "projectType": "saas",
+  "projectName": "iDempiere",
+  "projectDescription": "Open-source ERP, CRM, and SCM business suite with modular OSGi architecture, built on Java and PostgreSQL/Oracle for enterprise reliability.",
+  "theme": "linden",
+  "primaryColor": "#2563EB",
+  "lightColor": "#60A5FA",
+  "darkColor": "#1E40AF",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/data-model",
+              "concepts/osgi-plugins",
+              "concepts/multi-tenancy"
+            ]
+          },
+          {
+            "group": "Modules",
+            "pages": [
+              "modules/accounting",
+              "modules/crm",
+              "modules/inventory",
+              "modules/purchasing",
+              "modules/sales",
+              "modules/manufacturing",
+              "modules/workflow"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/setup",
+              "development/model-driven",
+              "development/creating-plugins",
+              "development/callouts",
+              "development/processes",
+              "development/model-validators"
+            ]
+          },
+          {
+            "group": "Administration",
+            "pages": [
+              "admin/configuration",
+              "admin/database-setup",
+              "admin/user-management",
+              "admin/migration",
+              "admin/backup-restore"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Web Services",
+            "pages": [
+              "api/overview",
+              "api/authentication",
+              "api/rest-api",
+              "api/soap-api"
+            ]
+          },
+          {
+            "group": "Java API",
+            "pages": [
+              "api/model-api",
+              "api/process-api",
+              "api/callout-api",
+              "api/factory-pattern"
+            ]
+          },
+          {
+            "group": "Extension Points",
+            "pages": [
+              "api/plugin-extensions",
+              "api/payment-processors",
+              "api/tax-providers",
+              "api/shipment-processors"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Community",
+        "groups": [
+          {
+            "group": "Contributing",
+            "pages": [
+              "community/overview",
+              "community/contributing",
+              "community/code-standards",
+              "community/testing"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "community/support",
+              "community/forums",
+              "community/plugins"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Full ERP/CRM/SCM business suite",
+    "OSGi-based modular plugin architecture",
+    "Multi-tenant and multi-language support",
+    "Web-based ZK UI framework",
+    "Advanced workflow engine",
+    "Financial accounting and reporting",
+    "Inventory and warehouse management",
+    "Sales and purchasing automation",
+    "RESTful and SOAP web services",
+    "Jasper Reports integration",
+    "PostgreSQL and Oracle database support",
+    "Model-driven development"
+  ],
+  "publicApiSurface": [
+    "org.compiere.model.PO - Persistent Object base class",
+    "org.compiere.model.GridTab - UI data container",
+    "org.compiere.process.ProcessCall - Process execution interface",
+    "org.adempiere.base.IColumnCallout - Field validation callouts",
+    "org.adempiere.base.IModelValidator - Model event handlers",
+    "org.adempiere.base.IProcessFactory - Process factory extension",
+    "org.compiere.model.PaymentProcessor - Payment processing interface",
+    "org.adempiere.model.ITaxProvider - Tax calculation provider",
+    "org.adempiere.model.IShipmentProcessor - Shipment integration",
+    "org.idempiere.adinterface.CompiereService - SOAP web service",
+    "REST API endpoints - RESTful web services",
+    "OSGi plugin.xml extension points",
+    "org.compiere.wf - Workflow engine API",
+    "org.compiere.acct - Accounting engine API"
+  ]
+}
