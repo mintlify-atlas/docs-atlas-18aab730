@@ -1,0 +1,683 @@
+---
+title: Processes
+description: Create custom business processes and reports in iDempiere
+---
+
+Processes are batch operations that execute business logic, generate reports, or perform data transformations. They're the backbone of automated workflows in iDempiere.
+
+## What Are Processes?
+
+A process in iDempiere is a Java class that:
+- Executes business logic (imports, calculations, document generation)
+- Generates reports (Jasper, PDFs)
+- Runs scheduled tasks
+- Performs database operations
+
+**Common use cases:**
+- Generate invoices from shipments
+- Import data from external systems
+- Calculate commissions
+- Run accounting processes
+- Generate reports and exports
+
+## Process Types
+
+iDempiere supports several process types:
+
+| Type | Description | Base Class |
+|------|-------------|------------|
+| **Server Process** | Runs on server, no UI | `SvrProcess` |
+| **Client Process** | Can run on client side | Implements `ClientProcess` |
+| **Java Process** | Standard Java process | Implements `ProcessCall` |
+| **Report** | Generates Jasper report | `SvrProcess` |
+
+## Creating a Process
+
+### Process Class Structure
+
+All processes extend `SvrProcess` and implement two key methods:
+
+```java
+public class MyProcess extends SvrProcess {
+    
+    /**
+     * Prepare - Get parameters
+     */
+    protected void prepare() {
+        // Extract process parameters
+    }
+    
+    /**
+     * Execute process logic
+     * @return Message to display to user
+     * @throws Exception
+     */
+    protected String doIt() throws Exception {
+        // Your business logic here
+        return "Success message";
+    }
+}
+```
+
+## Real Example: Cache Reset Process
+
+From `org.compiere.process.CacheReset` in the iDempiere source:
+
+```java org.compiere.process.CacheReset (~/workspace/source/org.adempiere.base.process/)
+package org.compiere.process;
+
+import org.compiere.util.CacheMgt;
+import org.compiere.util.Env;
+
+/**
+ * Reset Cache
+ * Clears all application caches
+ */
+@org.adempiere.base.annotation.Process
+public class CacheReset extends SvrProcess implements ClientProcess {
+    
+    /**
+     * Prepare - e.g., get Parameters
+     */
+    protected void prepare() {
+        // No parameters for this process
+    }
+    
+    /**
+     * Perform process
+     * @return Message to be translated
+     * @throws Exception
+     */
+    protected String doIt() throws java.lang.Exception {
+        log.info("");
+        Env.reset(false);  // Reset environment (not final)
+        CacheMgt.get().reset();  // Reset all caches
+        return "Cache Reset";
+    }
+}
+```
+
+**Key features:**
+- `@org.adempiere.base.annotation.Process` - Auto-discovery annotation
+- Implements `ClientProcess` - Can run on client or server
+- Simple, focused logic
+
+## Real Example: Invoice Generation
+
+From `org.compiere.process.InvoiceGenerate`:
+
+```java org.compiere.process.InvoiceGenerate (excerpt)
+package org.compiere.process;
+
+import java.math.BigDecimal;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Timestamp;
+
+import org.compiere.model.MBPartner;
+import org.compiere.model.MInvoice;
+import org.compiere.model.MInvoiceLine;
+import org.compiere.model.MOrder;
+import org.compiere.model.MOrderLine;
+import org.compiere.util.DB;
+import org.compiere.util.Env;
+
+/**
+ * Generate Invoices from Orders/Shipments
+ */
+@org.adempiere.base.annotation.Process
+public class InvoiceGenerate extends SvrProcess {
+    
+    /** Manual Selection */
+    private boolean p_Selection = false;
+    /** Date Invoiced */
+    private Timestamp p_DateInvoiced = null;
+    /** Organization */
+    private int p_AD_Org_ID = 0;
+    /** Business Partner */
+    private int p_C_BPartner_ID = 0;
+    /** Order */
+    private int p_C_Order_ID = 0;
+    /** Consolidate */
+    private boolean p_ConsolidateDocument = true;
+    /** Invoice Document Action */
+    private String p_docAction = DocAction.ACTION_Complete;
+    
+    /** Number of Invoices created */
+    private int m_created = 0;
+    
+    /**
+     * Prepare - e.g., get Parameters
+     */
+    protected void prepare() {
+        ProcessInfoParameter[] params = getParameter();
+        for (ProcessInfoParameter param : params) {
+            String name = param.getParameterName();
+            
+            if ("Selection".equals(name)) {
+                p_Selection = "Y".equals(param.getParameter());
+            }
+            else if ("DateInvoiced".equals(name)) {
+                p_DateInvoiced = (Timestamp) param.getParameter();
+            }
+            else if ("AD_Org_ID".equals(name)) {
+                p_AD_Org_ID = param.getParameterAsInt();
+            }
+            else if ("C_BPartner_ID".equals(name)) {
+                p_C_BPartner_ID = param.getParameterAsInt();
+            }
+            else if ("C_Order_ID".equals(name)) {
+                p_C_Order_ID = param.getParameterAsInt();
+            }
+            else if ("ConsolidateDocument".equals(name)) {
+                p_ConsolidateDocument = "Y".equals(param.getParameter());
+            }
+            else if ("DocAction".equals(name)) {
+                p_docAction = (String) param.getParameter();
+            }
+        }
+    }
+    
+    /**
+     * Perform process
+     * @return Message
+     * @throws Exception
+     */
+    protected String doIt() throws Exception {
+        log.info("Selection=" + p_Selection + ", C_BPartner_ID=" + p_C_BPartner_ID);
+        
+        if (p_DateInvoiced == null)
+            p_DateInvoiced = Env.getContextAsDate(getCtx(), "#Date");
+        
+        // Generate invoices
+        generateInvoices();
+        
+        return "@Created@ = " + m_created;
+    }
+    
+    /**
+     * Generate invoices from orders
+     */
+    private void generateInvoices() throws Exception {
+        // Build SQL to find orders to invoice
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT C_Order_ID FROM C_Order o ");
+        sql.append("WHERE o.DocStatus='CO' ");
+        sql.append("AND o.IsSOTrx='Y' ");
+        
+        if (p_C_BPartner_ID > 0)
+            sql.append("AND o.C_BPartner_ID=? ");
+        
+        if (p_C_Order_ID > 0)
+            sql.append("AND o.C_Order_ID=? ");
+        
+        // Execute query and create invoices
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        try {
+            pstmt = DB.prepareStatement(sql.toString(), get_TrxName());
+            int idx = 1;
+            if (p_C_BPartner_ID > 0)
+                pstmt.setInt(idx++, p_C_BPartner_ID);
+            if (p_C_Order_ID > 0)
+                pstmt.setInt(idx++, p_C_Order_ID);
+            
+            rs = pstmt.executeQuery();
+            while (rs.next()) {
+                int C_Order_ID = rs.getInt(1);
+                MOrder order = new MOrder(getCtx(), C_Order_ID, get_TrxName());
+                
+                // Create invoice from order
+                MInvoice invoice = new MInvoice(order, 0, p_DateInvoiced);
+                invoice.setDocAction(p_docAction);
+                
+                if (invoice.save()) {
+                    m_created++;
+                    addLog(invoice.get_ID(), invoice.getDateInvoiced(), null, 
+                          invoice.getDocumentNo());
+                }
+            }
+        } finally {
+            DB.close(rs, pstmt);
+        }
+    }
+}
+```
+
+## Process Parameters
+
+### Defining Parameters
+
+Extract parameters in the `prepare()` method:
+
+```java
+protected void prepare() {
+    ProcessInfoParameter[] params = getParameter();
+    for (ProcessInfoParameter param : params) {
+        String name = param.getParameterName();
+        
+        if ("C_BPartner_ID".equals(name)) {
+            p_BPartner_ID = param.getParameterAsInt();
+        }
+        else if ("DateFrom".equals(name)) {
+            p_DateFrom = (Timestamp) param.getParameter();
+            p_DateTo = (Timestamp) param.getParameter_To();
+        }
+        else if ("IsActive".equals(name)) {
+            p_IsActive = "Y".equals(param.getParameter());
+        }
+        else if ("Description".equals(name)) {
+            p_Description = (String) param.getParameter();
+        }
+    }
+}
+```
+
+### Parameter Helper Methods
+
+```java
+// Get as Integer
+int id = param.getParameterAsInt();
+
+// Get as String
+String value = (String) param.getParameter();
+
+// Get as Boolean
+Boolean flag = (Boolean) param.getParameter();
+
+// Get as BigDecimal
+BigDecimal amount = (BigDecimal) param.getParameter();
+
+// Get as Timestamp
+Timestamp date = (Timestamp) param.getParameter();
+
+// Get range (_To value for ranges)
+Timestamp dateTo = (Timestamp) param.getParameter_To();
+```
+
+## Context and Logging
+
+### Accessing Context
+
+```java
+// Get context
+Properties ctx = getCtx();
+
+// Get transaction name
+String trxName = get_TrxName();
+
+// Get current client
+int AD_Client_ID = Env.getAD_Client_ID(getCtx());
+
+// Get current organization
+int AD_Org_ID = Env.getAD_Org_ID(getCtx());
+
+// Get current user
+int AD_User_ID = Env.getAD_User_ID(getCtx());
+
+// Get session date
+Timestamp currentDate = Env.getContextAsDate(getCtx(), "#Date");
+```
+
+### Logging
+
+```java
+// Info logging
+log.info("Processing order: " + C_Order_ID);
+
+// Warning
+log.warning("Credit limit exceeded for BP: " + bpName);
+
+// Error
+log.severe("Failed to create invoice: " + e.getMessage());
+
+// With exception
+log.log(Level.SEVERE, "Database error", e);
+
+// Add to process log (visible to user)
+addLog("Created invoice: " + invoice.getDocumentNo());
+
+// Add with values
+addLog(record_ID, date, number, message);
+```
+
+## Database Operations
+
+### Using Model Classes
+
+```java
+protected String doIt() throws Exception {
+    // Load existing record
+    MOrder order = new MOrder(getCtx(), p_C_Order_ID, get_TrxName());
+    
+    // Create new record
+    MInvoice invoice = new MInvoice(getCtx(), 0, get_TrxName());
+    invoice.setC_BPartner_ID(order.getC_BPartner_ID());
+    invoice.setDateInvoiced(Env.getContextAsDate(getCtx(), "#Date"));
+    invoice.saveEx();  // Throws exception on error
+    
+    // Query records
+    List<MOrderLine> lines = new Query(getCtx(), MOrderLine.Table_Name,
+                                       "C_Order_ID=?", get_TrxName())
+        .setParameters(order.get_ID())
+        .list();
+    
+    // Process each line
+    for (MOrderLine orderLine : lines) {
+        MInvoiceLine invLine = new MInvoiceLine(invoice);
+        invLine.setOrderLine(orderLine);
+        invLine.setQtyInvoiced(orderLine.getQtyOrdered());
+        invLine.saveEx();
+    }
+    
+    return "Created invoice: " + invoice.getDocumentNo();
+}
+```
+
+### Direct SQL
+
+```java
+protected String doIt() throws Exception {
+    int count = 0;
+    String sql = "SELECT C_Order_ID FROM C_Order " +
+                 "WHERE DocStatus='CO' AND IsSOTrx='Y' " +
+                 "AND C_BPartner_ID=?";
+    
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+    
+    try {
+        pstmt = DB.prepareStatement(sql, get_TrxName());
+        pstmt.setInt(1, p_C_BPartner_ID);
+        rs = pstmt.executeQuery();
+        
+        while (rs.next()) {
+            int orderID = rs.getInt("C_Order_ID");
+            // Process order
+            count++;
+        }
+    } finally {
+        DB.close(rs, pstmt);
+    }
+    
+    return "Processed " + count + " orders";
+}
+```
+
+### Update/Delete Operations
+
+```java
+// Update using DB utility
+String sql = "UPDATE C_Order SET IsApproved='Y' WHERE C_Order_ID=?";
+int updated = DB.executeUpdate(sql, p_C_Order_ID, get_TrxName());
+
+// Update with multiple parameters
+Object[] params = new Object[] { "Y", new Timestamp(System.currentTimeMillis()), 100 };
+DB.executeUpdate("UPDATE C_Order SET Processed='Y', Updated=?, C_Order_ID=?", 
+                params, false, get_TrxName());
+
+// Execute update and get count
+int count = DB.getSQLValue(get_TrxName(), 
+    "SELECT COUNT(*) FROM C_Order WHERE DocStatus='CO'");
+```
+
+## Transaction Management
+
+```java
+protected String doIt() throws Exception {
+    // Process runs in transaction from get_TrxName()
+    // Commit happens automatically if no exception
+    // Rollback happens automatically on exception
+    
+    MOrder order = new MOrder(getCtx(), p_C_Order_ID, get_TrxName());
+    order.setDescription("Updated by process");
+    order.saveEx();  // Saved in process transaction
+    
+    // If you need a separate transaction
+    Trx trx = Trx.get(Trx.createTrxName("MyProcess"), true);
+    try {
+        MInvoice invoice = new MInvoice(getCtx(), 0, trx.getTrxName());
+        invoice.saveEx();
+        trx.commit();
+    } catch (Exception e) {
+        trx.rollback();
+        throw e;
+    } finally {
+        trx.close();
+    }
+    
+    return "Success";
+}
+```
+
+## Error Handling
+
+```java
+protected String doIt() throws Exception {
+    // Method 1: Throw exception
+    if (p_C_BPartner_ID <= 0) {
+        throw new AdempiereException("Business Partner required");
+    }
+    
+    // Method 2: Return error via exception
+    MOrder order = new MOrder(getCtx(), p_C_Order_ID, get_TrxName());
+    if (!order.isSOTrx()) {
+        throw new AdempiereException("Must be a sales order");
+    }
+    
+    // Method 3: Validate before processing
+    String error = validate();
+    if (error != null) {
+        throw new AdempiereException(error);
+    }
+    
+    return "Success";
+}
+
+private String validate() {
+    if (p_DateFrom == null)
+        return "Date From is required";
+    
+    if (p_DateTo != null && p_DateTo.before(p_DateFrom))
+        return "Date To must be after Date From";
+    
+    return null;  // No error
+}
+```
+
+## Registering a Process
+
+### Step 1: Create Process in Dictionary
+
+```sql
+INSERT INTO AD_Process (
+    AD_Process_ID, AD_Client_ID, AD_Org_ID,
+    Name, Value, Description,
+    AccessLevel, EntityType,
+    Classname, IsBetaFunctionality
+) VALUES (
+    200010, 0, 0,
+    'Generate Customer Invoices', 'GenerateInvoices',
+    'Generate invoices from completed orders',
+    '3', 'U',  -- AccessLevel 3 = Client+Org
+    'com.yourcompany.process.GenerateInvoices', 'N'
+);
+```
+
+### Step 2: Add Parameters
+
+```sql
+INSERT INTO AD_Process_Para (
+    AD_Process_Para_ID, AD_Process_ID,
+    Name, ColumnName, FieldLength,
+    AD_Reference_ID, IsMandatory, SeqNo, EntityType
+) VALUES (
+    200110, 200010,
+    'Business Partner', 'C_BPartner_ID', 10,
+    30, 'N', 10, 'U'  -- Reference 30 = Search (Business Partner)
+);
+
+INSERT INTO AD_Process_Para (
+    AD_Process_Para_ID, AD_Process_ID,
+    Name, ColumnName, FieldLength,
+    AD_Reference_ID, IsMandatory, SeqNo,
+    IsRange, EntityType
+) VALUES (
+    200120, 200010,
+    'Date Invoiced', 'DateInvoiced', 7,
+    15, 'Y', 20,  -- Reference 15 = Date
+    'Y', 'U'  -- IsRange = Y for date ranges
+);
+
+INSERT INTO AD_Process_Para (
+    AD_Process_Para_ID, AD_Process_ID,
+    Name, ColumnName, FieldLength,
+    AD_Reference_ID, IsMandatory, SeqNo,
+    DefaultValue, EntityType
+) VALUES (
+    200130, 200010,
+    'Consolidate', 'ConsolidateDocument', 1,
+    20, 'Y', 30,  -- Reference 20 = Yes/No
+    'Y', 'U'
+);
+```
+
+### Step 3: Add to Menu
+
+```sql
+INSERT INTO AD_Menu (
+    AD_Menu_ID, AD_Client_ID, AD_Org_ID,
+    Name, Description, Action,
+    AD_Process_ID, EntityType, IsSummary
+) VALUES (
+    200010, 0, 0,
+    'Generate Invoices', 'Generate invoices from orders',
+    'P',  -- Action = Process
+    200010, 'U', 'N'
+);
+
+-- Link to parent menu (Sales)
+INSERT INTO AD_TreeNodeMM (
+    AD_Tree_ID, Node_ID, Parent_ID, SeqNo
+) VALUES (
+    10, 200010, 153, 10  -- 153 = Sales menu
+);
+```
+
+## Process Annotation
+
+The `@org.adempiere.base.annotation.Process` annotation enables automatic discovery:
+
+```java
+package com.yourcompany.process;
+
+import org.compiere.process.SvrProcess;
+
+@org.adempiere.base.annotation.Process
+public class MyProcess extends SvrProcess {
+    // Implementation
+}
+```
+
+Then in `AD_Process.Classname`, use the full class name:
+
+```sql
+UPDATE AD_Process 
+SET Classname = 'com.yourcompany.process.MyProcess'
+WHERE Value = 'MyProcess';
+```
+
+## Client vs Server Processes
+
+### Server Process (default)
+
+Runs only on server:
+
+```java
+public class MyServerProcess extends SvrProcess {
+    // Runs on server only
+}
+```
+
+### Client Process
+
+Can run on client or server:
+
+```java
+import org.compiere.process.ClientProcess;
+
+public class MyClientProcess extends SvrProcess implements ClientProcess {
+    // Can run on client side
+}
+```
+
+Use `ClientProcess` when:
+- Process needs to access client-side resources
+- Process shows UI dialogs
+- Process is quick and doesn't need server resources
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Use saveEx() instead of save()">
+`saveEx()` throws an exception on failure, ensuring errors aren't silently ignored:
+```java
+order.saveEx();  // Throws exception on error
+```
+</Accordion>
+
+<Accordion title="Always use transactions">
+Pass `get_TrxName()` to all model operations:
+```java
+MOrder order = new MOrder(getCtx(), id, get_TrxName());
+```
+</Accordion>
+
+<Accordion title="Log progress for long processes">
+```java
+for (int i = 0; i < records.size(); i++) {
+    if (i % 100 == 0) {
+        log.info("Processed " + i + " of " + records.size());
+    }
+}
+```
+</Accordion>
+
+<Accordion title="Use meaningful return messages">
+```java
+return "@Created@ = " + created + ", @Updated@ = " + updated;
+```
+The `@` symbols reference translatable messages.
+</Accordion>
+
+<Accordion title="Handle interruption">
+```java
+for (Record record : records) {
+    if (isInterrupted()) {
+        throw new AdempiereException("Process interrupted by user");
+    }
+    // Process record
+}
+```
+</Accordion>
+
+</AccordionGroup>
+
+<Tip>
+Test processes in a development environment before deploying to production. Use database transactions to ensure data integrity.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Model Validators" icon="check-double" href="/development/model-validators">
+  Handle document and model events
+</Card>
+
+<Card title="Model-Driven Architecture" icon="sitemap" href="/development/model-driven">
+  Understand the Application Dictionary
+</Card>
+
+</CardGroup>

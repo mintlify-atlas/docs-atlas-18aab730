@@ -1,0 +1,616 @@
+---
+title: Backup & Restore
+description: Implement backup and restore strategies for iDempiere databases
+---
+
+## Overview
+
+Regular database backups are critical for disaster recovery, system upgrades, and data protection. iDempiere provides built-in tools for backing up and restoring both PostgreSQL and Oracle databases.
+
+## Backup Strategy
+
+A comprehensive backup strategy should include:
+
+- **Full backups**: Complete database dumps
+- **Incremental backups**: Transaction logs and changes
+- **Application backups**: Configuration files and customizations
+- **Document storage**: Attachment and document files
+
+<Warning>
+Test your backup and restore procedures regularly. A backup is only valuable if you can successfully restore from it.
+</Warning>
+
+## PostgreSQL Backup
+
+### Using iDempiere Scripts
+
+iDempiere provides wrapper scripts for database operations.
+
+<Steps>
+  <Step title="Navigate to utilities directory">
+    ```bash
+    cd $IDEMPIERE_HOME/utils
+    ```
+  </Step>
+  
+  <Step title="Source environment">
+    ```bash
+    source ./myEnvironment.sh
+    ```
+  </Step>
+  
+  <Step title="Run backup script">
+    ```bash
+    ./RUN_DBExport.sh
+    ```
+  </Step>
+</Steps>
+
+The script creates a backup file at `$IDEMPIERE_HOME/data/ExpDat.dmp`.
+
+### Direct PostgreSQL Backup
+
+For more control, use `pg_dump` directly:
+
+```bash
+# Custom format (compressed, recommended)
+pg_dump -h localhost -p 5432 -U adempiere -F c -b -v -f \
+  /backup/idempiere_$(date +%Y%m%d_%H%M%S).backup idempiere
+
+# Plain SQL format
+pg_dump -h localhost -p 5432 -U adempiere -F p -b -v -f \
+  /backup/idempiere_$(date +%Y%m%d_%H%M%S).sql idempiere
+
+# Directory format (parallel dump)
+pg_dump -h localhost -p 5432 -U adempiere -F d -j 4 -b -v -f \
+  /backup/idempiere_$(date +%Y%m%d_%H%M%S) idempiere
+```
+
+**Options explained:**
+- `-F c`: Custom format (compressed)
+- `-F p`: Plain SQL format
+- `-F d`: Directory format
+- `-j 4`: Use 4 parallel jobs (directory format only)
+- `-b`: Include large objects
+- `-v`: Verbose output
+
+### Schema-Only Backup
+
+Backup only the database structure:
+
+```bash
+pg_dump -h localhost -p 5432 -U adempiere -s -f \
+  /backup/idempiere_schema_$(date +%Y%m%d).sql idempiere
+```
+
+### Data-Only Backup
+
+Backup only data without schema:
+
+```bash
+pg_dump -h localhost -p 5432 -U adempiere -a -f \
+  /backup/idempiere_data_$(date +%Y%m%d).sql idempiere
+```
+
+## PostgreSQL Restore
+
+### Using iDempiere Scripts
+
+<Steps>
+  <Step title="Ensure backup file exists">
+    ```bash
+    ls -lh $IDEMPIERE_HOME/data/ExpDat.dmp
+    ```
+  </Step>
+  
+  <Step title="Stop iDempiere server">
+    ```bash
+    cd $IDEMPIERE_HOME/utils
+    ./idempiere.sh stop
+    ```
+  </Step>
+  
+  <Step title="Run restore script">
+    ```bash
+    source ./myEnvironment.sh
+    ./RUN_DBRestore.sh
+    ```
+    
+    The script will:
+    - Drop existing database
+    - Recreate database user
+    - Restore from backup
+  </Step>
+  
+  <Step title="Start iDempiere server">
+    ```bash
+    ./idempiere.sh start
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+The restore script drops the existing database. Ensure you have a recent backup before proceeding.
+</Warning>
+
+### Direct PostgreSQL Restore
+
+```bash
+# Restore from custom format
+pg_restore -h localhost -p 5432 -U adempiere -d idempiere -v \
+  /backup/idempiere_20240304.backup
+
+# Restore from SQL format
+psql -h localhost -p 5432 -U adempiere -d idempiere -f \
+  /backup/idempiere_20240304.sql
+
+# Restore from directory format (parallel)
+pg_restore -h localhost -p 5432 -U adempiere -d idempiere -j 4 -v \
+  /backup/idempiere_20240304/
+```
+
+### Restore to New Database
+
+<Steps>
+  <Step title="Create new database">
+    ```bash
+    sudo -u postgres psql
+    ```
+    
+    ```sql
+    CREATE DATABASE idempiere_restore
+      WITH ENCODING='UTF8'
+           OWNER=adempiere;
+    \q
+    ```
+  </Step>
+  
+  <Step title="Restore backup">
+    ```bash
+    pg_restore -h localhost -p 5432 -U adempiere \
+      -d idempiere_restore -v \
+      /backup/idempiere_20240304.backup
+    ```
+  </Step>
+  
+  <Step title="Update configuration">
+    Modify `idempiereEnv.properties` to point to new database:
+    ```properties
+    ADEMPIERE_DB_NAME=idempiere_restore
+    ```
+  </Step>
+</Steps>
+
+## Oracle Backup
+
+### Using iDempiere Scripts
+
+iDempiere provides scripts for Oracle database export.
+
+#### Traditional Export
+
+```bash
+cd $IDEMPIERE_HOME/utils
+source ./myEnvironment.sh
+./RUN_DBExport.sh
+```
+
+#### Data Pump Export
+
+For Oracle 10g and higher:
+
+```bash
+./RUN_DBExportdp.sh
+```
+
+### Direct Oracle Export
+
+#### Using Data Pump (expdp)
+
+```bash
+# Full schema export
+expdp adempiere/password@idempiere \
+  DIRECTORY=dpump_dir \
+  DUMPFILE=idempiere_$(date +%Y%m%d_%H%M%S).dmp \
+  LOGFILE=idempiere_$(date +%Y%m%d_%H%M%S).log \
+  SCHEMAS=adempiere
+
+# Compressed export
+expdp adempiere/password@idempiere \
+  DIRECTORY=dpump_dir \
+  DUMPFILE=idempiere_$(date +%Y%m%d_%H%M%S).dmp \
+  LOGFILE=idempiere_$(date +%Y%m%d_%H%M%S).log \
+  SCHEMAS=adempiere \
+  COMPRESSION=ALL
+```
+
+#### Create Data Pump Directory
+
+First-time setup:
+
+```sql
+-- As SYSTEM or DBA user
+CREATE DIRECTORY dpump_dir AS '/backup/oracle';
+GRANT READ, WRITE ON DIRECTORY dpump_dir TO adempiere;
+```
+
+### Oracle RMAN Backup
+
+For enterprise installations, use RMAN:
+
+```bash
+# Full database backup
+rman target / << EOF
+RUN {
+  ALLOCATE CHANNEL c1 DEVICE TYPE DISK;
+  BACKUP DATABASE FORMAT '/backup/rman/db_%U';
+  BACKUP ARCHIVELOG ALL FORMAT '/backup/rman/arch_%U';
+  BACKUP CURRENT CONTROLFILE FORMAT '/backup/rman/ctl_%U';
+  RELEASE CHANNEL c1;
+}
+EOF
+```
+
+## Oracle Restore
+
+### Using iDempiere Scripts
+
+<Steps>
+  <Step title="Verify backup file">
+    ```bash
+    ls -lh $IDEMPIERE_HOME/data/ExpDat.dmp
+    ```
+  </Step>
+  
+  <Step title="Stop iDempiere">
+    ```bash
+    cd $IDEMPIERE_HOME/utils
+    ./idempiere.sh stop
+    ```
+  </Step>
+  
+  <Step title="Run restore">
+    ```bash
+    source ./myEnvironment.sh
+    ./RUN_DBRestore.sh
+    ```
+  </Step>
+  
+  <Step title="Start iDempiere">
+    ```bash
+    ./idempiere.sh start
+    ```
+  </Step>
+</Steps>
+
+### Direct Oracle Import
+
+#### Using Data Pump (impdp)
+
+```bash
+# Full import
+impdp adempiere/password@idempiere \
+  DIRECTORY=dpump_dir \
+  DUMPFILE=idempiere_20240304.dmp \
+  LOGFILE=import_20240304.log \
+  SCHEMAS=adempiere
+
+# Import with table remapping
+impdp adempiere/password@idempiere \
+  DIRECTORY=dpump_dir \
+  DUMPFILE=idempiere_20240304.dmp \
+  REMAP_SCHEMA=adempiere:adempiere_new \
+  REMAP_TABLESPACE=users:users_new
+```
+
+## Automated Backup Scripts
+
+### PostgreSQL Automated Backup
+
+```bash
+#!/bin/bash
+# File: /usr/local/bin/idempiere-backup.sh
+
+# Configuration
+BACKUP_DIR="/backup/idempiere"
+DB_NAME="idempiere"
+DB_USER="adempiere"
+DB_HOST="localhost"
+DB_PORT="5432"
+RETENTION_DAYS=30
+
+# Create backup directory
+mkdir -p $BACKUP_DIR
+
+# Generate timestamp
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="$BACKUP_DIR/idempiere_$TIMESTAMP.backup"
+LOG_FILE="$BACKUP_DIR/idempiere_$TIMESTAMP.log"
+
+# Perform backup
+echo "Starting backup at $(date)" | tee $LOG_FILE
+pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -F c -b -v \
+  -f $BACKUP_FILE $DB_NAME 2>&1 | tee -a $LOG_FILE
+
+if [ $? -eq 0 ]; then
+    echo "Backup completed successfully" | tee -a $LOG_FILE
+    
+    # Compress backup
+    gzip $BACKUP_FILE
+    
+    # Remove old backups
+    find $BACKUP_DIR -name "idempiere_*.backup.gz" \
+      -mtime +$RETENTION_DAYS -delete
+    
+    echo "Cleanup completed" | tee -a $LOG_FILE
+else
+    echo "Backup failed!" | tee -a $LOG_FILE
+    exit 1
+fi
+```
+
+### Schedule with Cron
+
+```bash
+# Edit crontab
+crontab -e
+
+# Add daily backup at 2 AM
+0 2 * * * /usr/local/bin/idempiere-backup.sh
+
+# Weekly backup on Sunday at 3 AM
+0 3 * * 0 /usr/local/bin/idempiere-weekly-backup.sh
+```
+
+## Backup Application Files
+
+### Configuration Files
+
+```bash
+# Backup configuration
+tar -czf /backup/idempiere_config_$(date +%Y%m%d).tar.gz \
+  $IDEMPIERE_HOME/idempiere.properties \
+  $IDEMPIERE_HOME/idempiereEnv.properties \
+  $IDEMPIERE_HOME/utils/myEnvironment.sh \
+  $IDEMPIERE_HOME/jettyhome/etc/
+```
+
+### Customizations
+
+```bash
+# Backup custom plugins and modifications
+tar -czf /backup/idempiere_custom_$(date +%Y%m%d).tar.gz \
+  $IDEMPIERE_HOME/plugins.custom/ \
+  $IDEMPIERE_HOME/data/ \
+  --exclude='*.log'
+```
+
+### Document Attachments
+
+```bash
+# Backup attachment storage
+rsync -avz --progress \
+  $IDEMPIERE_HOME/data/attachments/ \
+  /backup/idempiere_attachments/
+```
+
+## Point-in-Time Recovery (PITR)
+
+### PostgreSQL PITR
+
+<Steps>
+  <Step title="Enable WAL archiving">
+    Edit `postgresql.conf`:
+    ```conf
+    wal_level = replica
+    archive_mode = on
+    archive_command = 'test ! -f /backup/wal_archive/%f && cp %p /backup/wal_archive/%f'
+    ```
+  </Step>
+  
+  <Step title="Take base backup">
+    ```bash
+    pg_basebackup -h localhost -U adempiere -D /backup/base \
+      -F tar -z -P
+    ```
+  </Step>
+  
+  <Step title="Restore to point in time">
+    ```bash
+    # Stop PostgreSQL
+    sudo systemctl stop postgresql
+    
+    # Restore base backup
+    rm -rf /var/lib/postgresql/14/main/*
+    tar -xzf /backup/base/base.tar.gz -C /var/lib/postgresql/14/main/
+    
+    # Create recovery configuration
+    cat > /var/lib/postgresql/14/main/recovery.conf << EOF
+    restore_command = 'cp /backup/wal_archive/%f %p'
+    recovery_target_time = '2024-03-04 14:30:00'
+    EOF
+    
+    # Start PostgreSQL
+    sudo systemctl start postgresql
+    ```
+  </Step>
+</Steps>
+
+## Disaster Recovery
+
+### Recovery Plan
+
+<Steps>
+  <Step title="Assess damage">
+    Determine extent of data loss and system failure
+  </Step>
+  
+  <Step title="Prepare environment">
+    - Set up replacement hardware if needed
+    - Install PostgreSQL/Oracle
+    - Install iDempiere
+  </Step>
+  
+  <Step title="Restore database">
+    Use most recent backup:
+    ```bash
+    ./RUN_DBRestore.sh
+    ```
+  </Step>
+  
+  <Step title="Apply transaction logs">
+    For PITR, replay WAL files or archive logs
+  </Step>
+  
+  <Step title="Restore configuration">
+    ```bash
+    tar -xzf /backup/idempiere_config_latest.tar.gz -C $IDEMPIERE_HOME
+    ```
+  </Step>
+  
+  <Step title="Verify data integrity">
+    - Check critical tables
+    - Verify recent transactions
+    - Test application functions
+  </Step>
+  
+  <Step title="Resume operations">
+    Start iDempiere and notify users
+  </Step>
+</Steps>
+
+## Backup Verification
+
+### Test Restore Procedure
+
+Regularly test your backups:
+
+```bash
+#!/bin/bash
+# File: /usr/local/bin/test-restore.sh
+
+TEST_DB="idempiere_test"
+BACKUP_FILE="/backup/idempiere/latest.backup"
+
+# Create test database
+psql -U postgres -c "DROP DATABASE IF EXISTS $TEST_DB"
+psql -U postgres -c "CREATE DATABASE $TEST_DB OWNER adempiere"
+
+# Restore backup
+pg_restore -U adempiere -d $TEST_DB $BACKUP_FILE
+
+if [ $? -eq 0 ]; then
+    echo "Restore test PASSED"
+    # Run validation queries
+    psql -U adempiere -d $TEST_DB -c "SELECT COUNT(*) FROM AD_Client"
+    # Cleanup
+    psql -U postgres -c "DROP DATABASE $TEST_DB"
+else
+    echo "Restore test FAILED"
+    exit 1
+fi
+```
+
+## Cloud Backup Solutions
+
+### AWS S3 Backup
+
+```bash
+#!/bin/bash
+# Backup to AWS S3
+
+BACKUP_FILE="/backup/idempiere_$(date +%Y%m%d).backup"
+S3_BUCKET="s3://my-idempiere-backups"
+
+# Create backup
+pg_dump -F c -U adempiere idempiere > $BACKUP_FILE
+
+# Upload to S3
+aws s3 cp $BACKUP_FILE $S3_BUCKET/daily/
+
+# Encrypt and upload sensitive configs
+tar -czf - $IDEMPIERE_HOME/idempiere.properties | \
+  openssl enc -aes-256-cbc -salt -out /tmp/config.tar.gz.enc
+aws s3 cp /tmp/config.tar.gz.enc $S3_BUCKET/config/
+```
+
+### Backup Retention Policy
+
+```bash
+# Retention strategy
+# - Daily backups: Keep 7 days
+# - Weekly backups: Keep 4 weeks  
+# - Monthly backups: Keep 12 months
+
+find /backup/daily -mtime +7 -delete
+find /backup/weekly -mtime +28 -delete
+find /backup/monthly -mtime +365 -delete
+```
+
+## Best Practices
+
+<Check>
+  Maintain both on-site and off-site backups
+</Check>
+
+<Check>
+  Test restore procedures monthly
+</Check>
+
+<Check>
+  Document backup and restore procedures
+</Check>
+
+<Check>
+  Monitor backup job success/failure
+</Check>
+
+<Check>
+  Encrypt backups containing sensitive data
+</Check>
+
+<Check>
+  Implement backup rotation and retention policies
+</Check>
+
+<Check>
+  Include database, files, and configuration in backup scope
+</Check>
+
+## Troubleshooting
+
+### Backup Fails
+
+**Insufficient disk space:**
+```bash
+# Check available space
+df -h /backup
+
+# Clean old backups
+find /backup -mtime +30 -delete
+```
+
+**Permission denied:**
+```bash
+# Fix backup directory permissions
+chown postgres:postgres /backup
+chmod 700 /backup
+```
+
+### Restore Fails
+
+**Version mismatch:**
+- Ensure pg_dump/pg_restore versions match
+- Use same PostgreSQL major version
+
+**Object already exists:**
+```bash
+# Use --clean option
+pg_restore --clean -d idempiere backup.dump
+```
+
+## See Also
+
+- [Database Setup](/admin/database-setup) - Database configuration
+- [Migration](/admin/migration) - Pre-migration backup requirements
+- [System Configuration](/admin/configuration) - Backup location configuration

@@ -1,0 +1,523 @@
+---
+title: Database Migration
+description: Manage database schema migrations and version upgrades in iDempiere
+---
+
+## Overview
+
+iDempiere uses a systematic migration approach to evolve the database schema. Migration scripts are SQL files organized by version, tracked in the `AD_MigrationScript` table, and applied automatically by the synchronization tools.
+
+## Migration Structure
+
+iDempiere migrations are organized in version-specific directories:
+
+```
+migration/
+├── i4.1/              # Version 4.1
+│   ├── oracle/
+│   └── postgresql/
+├── i5.1/              # Version 5.1
+│   ├── oracle/
+│   └── postgresql/
+├── i6.1/              # Version 6.1
+│   ├── oracle/
+│   └── postgresql/
+├── i7.1/              # Version 7.1
+├── i8.1/
+├── i9/
+├── iD10/              # Version 10 ("D" prefix for decimal)
+├── iD11/              # Version 11
+├── iD12/              # Version 12
+├── iD13/              # Version 13 (current)
+├── processes_post_migration/
+└── local_sql/
+```
+
+<Tip>
+iDempiere has over 2,000 migration scripts tracking every schema change since version 4.1.
+</Tip>
+
+## Migration Script Format
+
+Migration scripts follow a naming convention:
+
+```
+YYYYMMDDHHMM_IDEMPIERE-NNNN.sql
+```
+
+- **YYYYMMDD**: Date (year, month, day)
+- **HHMM**: Time (hour, minute)
+- **IDEMPIERE-NNNN**: Ticket or issue number
+
+Examples:
+- `202302021805_IDEMPIERE-5564.sql`
+- `202301191424_IDEMPIERE-5346.sql`
+- `201605101800_System_Ticket_1006008.sql`
+
+## Migration Tracking
+
+### AD_MigrationScript Table
+
+Applied migrations are tracked in the database:
+
+```sql
+CREATE TABLE AD_MigrationScript (
+    AD_MigrationScript_ID NUMBER(10) NOT NULL,
+    Name VARCHAR2(255) NOT NULL,
+    FileName VARCHAR2(255),
+    ReleaseNo VARCHAR2(20),
+    Status VARCHAR2(2),
+    Script CLOB,
+    ...
+);
+```
+
+Each applied script is recorded with:
+- Script name/filename
+- Application timestamp
+- Release version
+- Status (Applied/Failed)
+- Script content
+
+## Running Migrations
+
+### Automatic Synchronization
+
+The primary method to apply migrations is using the `SyncDB` script.
+
+<Steps>
+  <Step title="Navigate to iDempiere directory">
+    ```bash
+    cd $IDEMPIERE_HOME
+    ```
+  </Step>
+  
+  <Step title="Run synchronization">
+    ```bash
+    ./RUN_SyncDB.sh
+    ```
+    
+    Or with custom properties file:
+    ```bash
+    ./RUN_SyncDB.sh /path/to/idempiere.properties
+    ```
+  </Step>
+  
+  <Step title="Review output">
+    Check console output and log files in `/tmp/SyncDB_out_*`
+  </Step>
+</Steps>
+
+### Manual Synchronization
+
+For direct database synchronization:
+
+**PostgreSQL:**
+```bash
+cd $IDEMPIERE_HOME/org.adempiere.server-feature/utils.unix/postgresql
+./SyncDB.sh adempiere adempiere postgresql
+```
+
+**Oracle:**
+```bash
+cd $IDEMPIERE_HOME/org.adempiere.server-feature/utils.unix/oracle
+./SyncDB.sh adempiere adempiere oracle
+```
+
+## How Migration Sync Works
+
+The `SyncDB.sh` script performs the following:
+
+<Steps>
+  <Step title="Load environment">
+    Sets database connection parameters from environment variables or properties file
+  </Step>
+  
+  <Step title="Query applied scripts">
+    ```sql
+    SELECT name FROM ad_migrationscript
+    ```
+    
+    Creates list of already-applied scripts in `/tmp/lisDB_$$.txt`
+  </Step>
+  
+  <Step title="Scan migration files">
+    ```bash
+    find . -type f -wholename "*/postgresql/*.sql" \
+      ! -wholename "./processes_post_migration/postgresql/*" \
+      | sed -e 's:.*/::' | sort > /tmp/lisFS_$$.txt
+    ```
+  </Step>
+  
+  <Step title="Identify pending scripts">
+    ```bash
+    comm -13 /tmp/lisDB_$$.txt /tmp/lisFS_$$.txt > /tmp/lisPENDING_$$.txt
+    ```
+    
+    Creates list of scripts not yet applied
+  </Step>
+  
+  <Step title="Apply scripts in order">
+    Executes each pending script in chronological order:
+    ```bash
+    psql -h $ADEMPIERE_DB_SERVER -p $ADEMPIERE_DB_PORT \
+      -d $ADEMPIERE_DB_NAME -U $ADEMPIERE_DB_USER < script.sql
+    ```
+  </Step>
+  
+  <Step title="Run post-migration processes">
+    Executes scripts in `processes_post_migration/` directory after all migrations
+  </Step>
+  
+  <Step title="Log results">
+    Saves output to `/tmp/SyncDB_out_*/` directory
+  </Step>
+</Steps>
+
+### Error Detection
+
+The script detects errors using pattern matching:
+
+```bash
+ERROR_STRINGS="^(ERROR:|FEHLER:|FATAL:|ERRO:)"
+
+if grep -E "$ERROR_STRINGS" "$OUTFILE" > /dev/null 2>&1
+then
+    MSGERROR="ERROR ON FILE $OUTFILE"
+    break  # Stop processing
+fi
+```
+
+<Warning>
+If a migration script fails, the sync process stops immediately. Fix the error before running additional migrations.
+</Warning>
+
+## Migration Best Practices
+
+### Creating Migration Scripts
+
+<Check>
+  Use timestamp-based naming for proper ordering
+</Check>
+
+<Check>
+  Test scripts on both PostgreSQL and Oracle
+</Check>
+
+<Check>
+  Include rollback instructions in comments
+</Check>
+
+<Check>
+  Keep scripts idempotent when possible
+</Check>
+
+<Check>
+  Document purpose and ticket reference
+</Check>
+
+### Script Template
+
+```sql
+-- Migration script: IDEMPIERE-NNNN
+-- Description: Add new column to C_Invoice
+-- Date: 2024-03-04
+-- Ticket: https://idempiere.atlassian.net/browse/IDEMPIERE-NNNN
+
+-- Add column
+ALTER TABLE C_Invoice ADD COLUMN IsApproved CHAR(1) DEFAULT 'N';
+
+-- Update metadata
+INSERT INTO AD_Column (
+    AD_Column_ID, AD_Table_ID, ColumnName, Name,
+    AD_Reference_ID, FieldLength, DefaultValue,
+    IsKey, IsParent, IsMandatory, IsUpdateable, IsActive,
+    Created, CreatedBy, Updated, UpdatedBy
+) VALUES (
+    get_uuid(), get_table_id('C_Invoice'), 'IsApproved', 'Approved',
+    20, 1, 'N',
+    'N', 'N', 'Y', 'Y', 'Y',
+    now(), 100, now(), 100
+);
+
+-- Register migration
+SELECT register_migration_script('202403041200_IDEMPIERE-NNNN.sql');
+```
+
+## Custom Migrations
+
+### Local SQL Scripts
+
+Place custom migrations in `migration/local_sql/`:
+
+```bash
+migration/local_sql/
+├── postgresql/
+│   └── custom_001_add_custom_table.sql
+└── oracle/
+    └── custom_001_add_custom_table.sql
+```
+
+These are applied like standard migrations but don't conflict with upstream updates.
+
+### Post-Migration Processes
+
+Scripts in `processes_post_migration/` run after all migrations:
+
+```bash
+migration/processes_post_migration/
+├── postgresql/
+│   ├── fix_sequences.sql
+│   └── update_statistics.sql
+└── oracle/
+    ├── fix_sequences.sql
+    └── update_statistics.sql
+```
+
+Use for:
+- Sequence adjustments
+- Cache synchronization
+- Statistics updates
+- Data corrections
+
+## Version Upgrades
+
+### Major Version Upgrade Process
+
+<Steps>
+  <Step title="Backup database">
+    Always backup before upgrading:
+    ```bash
+    ./RUN_DBExport.sh
+    ```
+  </Step>
+  
+  <Step title="Stop iDempiere server">
+    ```bash
+    ./idempiere.sh stop
+    ```
+  </Step>
+  
+  <Step title="Update iDempiere binaries">
+    Extract new version to installation directory
+  </Step>
+  
+  <Step title="Run migration sync">
+    ```bash
+    ./RUN_SyncDB.sh
+    ```
+    
+    This applies all pending migrations from intermediate versions
+  </Step>
+  
+  <Step title="Verify migration">
+    ```bash
+    # Check for errors in output
+    ls -la /tmp/SyncDB_out_*/
+    grep -i error /tmp/SyncDB_out_*/*.out
+    ```
+  </Step>
+  
+  <Step title="Start iDempiere">
+    ```bash
+    ./idempiere.sh start
+    ```
+  </Step>
+  
+  <Step title="Test application">
+    Verify critical functions work correctly
+  </Step>
+</Steps>
+
+### Migration from iDempiere 11 to 12
+
+Example upgrade path:
+
+```bash
+# Migrations applied:
+migration/iD11/postgresql/*.sql  # All pending from v11
+migration/iD12/postgresql/*.sql  # All scripts for v12
+```
+
+## Monitoring Migrations
+
+### Query Migration Status
+
+```sql
+-- Count applied migrations
+SELECT COUNT(*) FROM AD_MigrationScript WHERE Status = 'Applied';
+
+-- Recent migrations
+SELECT Name, Created, ReleaseNo
+FROM AD_MigrationScript
+ORDER BY Created DESC
+LIMIT 10;
+
+-- Failed migrations
+SELECT Name, Status, ErrorMsg
+FROM AD_MigrationScript
+WHERE Status = 'Failed';
+```
+
+### Verify Migration
+
+Check if specific migration was applied:
+
+```sql
+SELECT * FROM AD_MigrationScript
+WHERE Name LIKE '%IDEMPIERE-5564%';
+```
+
+## Rollback Strategies
+
+### Manual Rollback
+
+<Warning>
+iDempiere does not provide automatic rollback. Rollbacks must be performed manually.
+</Warning>
+
+<Steps>
+  <Step title="Restore from backup">
+    The safest approach is restoring from pre-migration backup:
+    ```bash
+    ./RUN_DBRestore.sh
+    ```
+  </Step>
+  
+  <Step title="Manual SQL rollback">
+    If backup restore isn't feasible, craft reverse SQL:
+    ```sql
+    -- If migration added column
+    ALTER TABLE C_Invoice DROP COLUMN IsApproved;
+    
+    -- Remove from metadata
+    DELETE FROM AD_Column WHERE ColumnName = 'IsApproved';
+    
+    -- Remove migration record
+    DELETE FROM AD_MigrationScript
+    WHERE Name = '202403041200_IDEMPIERE-NNNN.sql';
+    ```
+  </Step>
+  
+  <Step title="Test thoroughly">
+    Verify system stability after rollback
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Migration Script Fails
+
+1. **Check error output**:
+   ```bash
+   cat /tmp/SyncDB_out_*/202403041200_IDEMPIERE-NNNN.out
+   ```
+
+2. **Common issues**:
+   - Syntax errors (check database-specific syntax)
+   - Missing dependencies (earlier migration not applied)
+   - Duplicate objects (migration already partially applied)
+   - Permission issues (database user lacks privileges)
+
+3. **Fix and retry**:
+   - Correct the SQL script
+   - Remove failed entry from AD_MigrationScript
+   - Run sync again
+
+### Migrations Out of Sync
+
+If migration tracking is incorrect:
+
+```sql
+-- Remove incorrectly registered migration
+DELETE FROM AD_MigrationScript
+WHERE Name = 'problem_script.sql';
+
+-- Force re-apply
+-- Run SyncDB again
+```
+
+### Missing Migrations
+
+If migrations directory is incomplete:
+
+1. Download complete migration set from repository
+2. Place in correct version directory
+3. Run SyncDB
+
+## Development Workflow
+
+### Creating Development Migrations
+
+<Steps>
+  <Step title="Make schema changes in application">
+    Use iDempiere's dictionary to modify schema
+  </Step>
+  
+  <Step title="Export migration">
+    System automatically creates migration XML in 2Pack format
+  </Step>
+  
+  <Step title="Convert to SQL">
+    Use migration tools to convert 2Pack to SQL:
+    ```bash
+    ./RUN_ExportReference.sh
+    ```
+  </Step>
+  
+  <Step title="Test on clean database">
+    Verify SQL script works on fresh installation
+  </Step>
+  
+  <Step title="Commit to repository">
+    Add script to appropriate migration directory
+  </Step>
+</Steps>
+
+## Advanced Topics
+
+### Migration Dependencies
+
+Some migrations depend on others:
+
+```sql
+-- Script 001: Create table
+CREATE TABLE Z_Custom_Table (...);
+
+-- Script 002: Add column (depends on 001)
+ALTER TABLE Z_Custom_Table ADD COLUMN NewField VARCHAR(60);
+```
+
+Timestamp-based naming ensures correct order.
+
+### Multi-Tenant Migrations
+
+Migrations apply to all tenants:
+
+- System-level changes affect all clients
+- Client-specific data can be handled with WHERE clauses
+- Use `AD_Client_ID` filtering when needed
+
+### Performance Considerations
+
+<Check>
+  Test migrations on production-sized datasets
+</Check>
+
+<Check>
+  Use batching for large data updates
+</Check>
+
+<Check>
+  Create indexes after bulk inserts, not before
+</Check>
+
+<Check>
+  Consider maintenance windows for long-running migrations
+</Check>
+
+## See Also
+
+- [Database Setup](/admin/database-setup) - Initial database configuration
+- [Backup & Restore](/admin/backup-restore) - Protect data before migrations
+- [System Configuration](/admin/configuration) - Configure migration environment

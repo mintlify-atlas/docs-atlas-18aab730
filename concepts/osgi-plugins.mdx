@@ -1,0 +1,794 @@
+---
+title: 'OSGi Plugin Development'
+description: 'Creating custom plugins and extensions for iDempiere using OSGi framework'
+icon: 'puzzle-piece'
+---
+
+## Overview
+
+iDempiere's plugin architecture is built on OSGi (Open Services Gateway initiative), enabling modular development where functionality can be added, removed, or updated without modifying core code.
+
+## Plugin Structure
+
+An iDempiere plugin is an OSGi bundle with specific metadata and optional extension declarations.
+
+### Bundle Directory Layout
+
+```bash
+org.example.customplugin/
+├── META-INF/
+│   └── MANIFEST.MF           # OSGi bundle metadata
+├── OSGI-INF/                  # Service component definitions
+│   ├── modelFactory.xml
+│   └── eventHandler.xml
+├── plugin.xml                 # Eclipse extension declarations
+├── src/
+│   └── org/example/
+│       ├── model/            # Custom model classes
+│       ├── process/          # Custom processes
+│       ├── callout/          # Callouts
+│       └── factory/          # Factories and services
+├── build.properties
+└── pom.xml
+```
+
+## Creating a Plugin Bundle
+
+### Step 1: Bundle Manifest
+
+Create `META-INF/MANIFEST.MF`:
+
+```manifest title="META-INF/MANIFEST.MF"
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Custom Plugin
+Bundle-SymbolicName: org.example.customplugin;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Vendor: Your Company
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Bundle-ActivationPolicy: lazy
+Service-Component: OSGI-INF/*.xml
+Require-Bundle: org.adempiere.base;bundle-version="13.0.0",
+ org.adempiere.ui.zk;bundle-version="13.0.0"
+Import-Package: org.osgi.service.component.annotations;version="1.5.0",
+ org.osgi.service.event;version="1.4.1",
+ org.osgi.framework;version="1.10.0"
+Export-Package: org.example.customplugin.model,
+ org.example.customplugin.process
+```
+
+<Info>
+The `Bundle-SymbolicName` with `;singleton:=true` ensures only one version of your plugin is active. The `Service-Component` directive enables Declarative Services for automatic service registration.
+</Info>
+
+### Step 2: Plugin Extensions
+
+Create `plugin.xml` to declare extensions:
+
+```xml title="plugin.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <!-- Register Model Validator -->
+   <extension
+         id="org.example.customplugin.validator"
+         name="Custom Model Validator"
+         point="org.adempiere.base.ModelValidator">
+      <validator
+            class="org.example.customplugin.validator.CustomValidator">
+      </validator>
+   </extension>
+   
+   <!-- Register Custom Process -->
+   <extension
+         id="org.example.customplugin.process.CustomProcess"
+         name="Custom Process"
+         point="org.adempiere.base.Process">
+      <process
+            class="org.example.customplugin.process.CustomProcess">
+      </process>
+   </extension>
+   
+   <!-- Register Callout -->
+   <extension
+         id="org.example.customplugin.callout.OrderCallout"
+         name="Order Callout"
+         point="org.adempiere.base.IColumnCallout">
+      <callout
+            class="org.example.customplugin.callout.OrderCallout">
+      </callout>
+   </extension>
+</plugin>
+```
+
+## Available Extension Points
+
+From `org.adempiere.base/plugin.xml`:
+
+<Tabs>
+  <Tab title="Model Validator">
+    Intercept PO lifecycle events (beforeSave, afterSave, beforeDelete, etc.)
+    
+    ```xml
+    <extension-point 
+       id="org.adempiere.base.ModelValidator" 
+       name="Model Validator" 
+       schema="schema/org.adempiere.base.ModelValidator.exsd"/>
+    ```
+    
+    **Use Cases:**
+    - Custom validation logic
+    - Cascading updates to related records
+    - Business rule enforcement
+    - Audit trail creation
+  </Tab>
+  
+  <Tab title="Process">
+    Register custom processes that appear in the menu
+    
+    ```xml
+    <extension-point 
+       id="org.adempiere.base.Process" 
+       name="Process" 
+       schema="schema/org.adempiere.base.Process.exsd"/>
+    ```
+    
+    **Use Cases:**
+    - Batch operations
+    - Data import/export
+    - Report generation
+    - Integration with external systems
+  </Tab>
+  
+  <Tab title="Callout">
+    Dynamic field calculations and updates in UI forms
+    
+    ```xml
+    <extension-point 
+       id="org.adempiere.base.IColumnCallout" 
+       name="Callout" 
+       schema="schema/org.adempiere.base.Callout.exsd"/>
+    ```
+    
+    **Use Cases:**
+    - Auto-populate fields based on user input
+    - Real-time validation
+    - Dynamic price calculations
+    - Field dependencies
+  </Tab>
+  
+  <Tab title="Payment Processor">
+    Integrate payment gateways and processors
+    
+    ```xml
+    <extension-point 
+       id="org.compiere.model.PaymentProcessor" 
+       name="Payment Processor" 
+       schema="schema/org.compiere.model.PaymentProcessor.exsd"/>
+    ```
+    
+    **Use Cases:**
+    - Credit card processing
+    - ACH/bank transfers
+    - Digital wallets
+    - Payment gateway integration
+  </Tab>
+  
+  <Tab title="Tax Provider">
+    Custom tax calculation engines
+    
+    ```xml
+    <extension-point 
+       id="org.adempiere.model.ITaxProvider" 
+       name="Tax Provider" 
+       schema="schema/org.adempiere.model.ITaxProvider.exsd"/>
+    ```
+    
+    Example from core:
+    ```xml
+    <extension
+       id="org.compiere.model.StandardTaxProvider"
+       name="Standard Tax Provider"
+       point="org.adempiere.model.ITaxProvider">
+       <provider
+          class="org.compiere.model.StandardTaxProvider"
+          priority="0">
+       </provider>
+    </extension>
+    ```
+  </Tab>
+</Tabs>
+
+## Implementing a Model Factory
+
+Model factories enable custom PO classes to be instantiated dynamically:
+
+### Service Component Definition
+
+Create `OSGI-INF/modelFactory.xml`:
+
+```xml title="OSGI-INF/modelFactory.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.5.0" 
+   name="org.example.customplugin.factory.CustomModelFactory">
+   <implementation class="org.example.customplugin.factory.CustomModelFactory"/>
+   <service>
+      <provide interface="org.adempiere.base.IModelFactory"/>
+   </service>
+</scr:component>
+```
+
+### Model Factory Implementation
+
+```java title="CustomModelFactory.java"
+package org.example.customplugin.factory;
+
+import java.sql.ResultSet;
+import org.adempiere.base.IModelFactory;
+import org.compiere.model.PO;
+import org.compiere.util.Env;
+import org.example.customplugin.model.*;
+
+/**
+ * Model Factory for custom tables
+ */
+public class CustomModelFactory implements IModelFactory {
+    
+    @Override
+    public Class<?> getClass(String tableName) {
+        // Return class for custom tables
+        if ("XX_CustomOrder".equals(tableName)) {
+            return MCustomOrder.class;
+        }
+        if ("XX_CustomProduct".equals(tableName)) {
+            return MCustomProduct.class;
+        }
+        // Return null for tables we don't handle
+        return null;
+    }
+    
+    @Override
+    public PO getPO(String tableName, int Record_ID, String trxName) {
+        if ("XX_CustomOrder".equals(tableName)) {
+            return new MCustomOrder(Env.getCtx(), Record_ID, trxName);
+        }
+        if ("XX_CustomProduct".equals(tableName)) {
+            return new MCustomProduct(Env.getCtx(), Record_ID, trxName);
+        }
+        return null;
+    }
+    
+    @Override
+    public PO getPO(String tableName, String Record_UU, String trxName) {
+        if ("XX_CustomOrder".equals(tableName)) {
+            return new MCustomOrder(Env.getCtx(), Record_UU, trxName);
+        }
+        if ("XX_CustomProduct".equals(tableName)) {
+            return new MCustomProduct(Env.getCtx(), Record_UU, trxName);
+        }
+        return null;
+    }
+    
+    @Override
+    public PO getPO(String tableName, ResultSet rs, String trxName) {
+        if ("XX_CustomOrder".equals(tableName)) {
+            return new MCustomOrder(Env.getCtx(), rs, trxName);
+        }
+        if ("XX_CustomProduct".equals(tableName)) {
+            return new MCustomProduct(Env.getCtx(), rs, trxName);
+        }
+        return null;
+    }
+}
+```
+
+<Note>
+Model factories are queried in priority order. If your factory returns null, the system continues checking other registered factories.
+</Note>
+
+## Implementing a Model Validator
+
+```java title="CustomValidator.java"
+package org.example.customplugin.validator;
+
+import org.compiere.model.*;
+import org.compiere.util.CLogger;
+
+/**
+ * Custom Model Validator
+ * Intercepts PO lifecycle events
+ */
+public class CustomValidator implements ModelValidator {
+    
+    private static CLogger log = CLogger.getCLogger(CustomValidator.class);
+    private int m_AD_Client_ID = -1;
+    
+    @Override
+    public void initialize(ModelValidationEngine engine, MClient client) {
+        // Register for specific tables
+        engine.addModelChange(MOrder.Table_Name, this);
+        engine.addModelChange(MInvoice.Table_Name, this);
+        
+        // Register for document validation
+        engine.addDocValidate(MOrder.Table_Name, this);
+        
+        m_AD_Client_ID = client.getAD_Client_ID();
+        log.info("Initialized for client: " + client.getName());
+    }
+    
+    @Override
+    public int getAD_Client_ID() {
+        return m_AD_Client_ID;
+    }
+    
+    @Override
+    public String login(int AD_Org_ID, int AD_Role_ID, int AD_User_ID) {
+        log.info("User login: " + AD_User_ID);
+        return null;
+    }
+    
+    @Override
+    public String modelChange(PO po, int type) throws Exception {
+        // Dispatch to specific handlers
+        if (po.get_TableName().equals(MOrder.Table_Name)) {
+            return orderChanged((MOrder)po, type);
+        }
+        if (po.get_TableName().equals(MInvoice.Table_Name)) {
+            return invoiceChanged((MInvoice)po, type);
+        }
+        return null;
+    }
+    
+    /**
+     * Handle order changes
+     */
+    private String orderChanged(MOrder order, int type) {
+        // Before new record is created
+        if (type == TYPE_BEFORE_NEW) {
+            log.info("Creating new order for partner: " + 
+                order.getC_BPartner_ID());
+            
+            // Set default values
+            if (order.getM_Warehouse_ID() <= 0) {
+                order.setM_Warehouse_ID(getDefaultWarehouse());
+            }
+        }
+        
+        // After record is changed
+        if (type == TYPE_AFTER_CHANGE) {
+            // Partner changed - update related data
+            if (order.is_ValueChanged("C_BPartner_ID")) {
+                updatePartnerDependencies(order);
+            }
+            
+            // Payment term changed - recalculate due date
+            if (order.is_ValueChanged("C_PaymentTerm_ID")) {
+                calculateDueDate(order);
+            }
+        }
+        
+        // Before delete - check references
+        if (type == TYPE_BEFORE_DELETE) {
+            if (hasShipments(order)) {
+                return "Cannot delete order with shipments";
+            }
+        }
+        
+        return null; // Validation passed
+    }
+    
+    /**
+     * Handle invoice changes
+     */
+    private String invoiceChanged(MInvoice invoice, int type) {
+        if (type == TYPE_BEFORE_NEW) {
+            // Custom invoice validation
+            if (invoice.getGrandTotal().signum() < 0 && 
+                !invoice.getDocumentNo().startsWith("CM-")) {
+                return "Credit memos must start with CM- prefix";
+            }
+        }
+        return null;
+    }
+    
+    @Override
+    public String docValidate(PO po, int timing) {
+        if (!(po instanceof DocAction))
+            return null;
+        
+        if (po.get_TableName().equals(MOrder.Table_Name)) {
+            return orderDocValidate((MOrder)po, timing);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Validate order document actions
+     */
+    private String orderDocValidate(MOrder order, int timing) {
+        // Before complete
+        if (timing == TIMING_BEFORE_COMPLETE) {
+            // Check credit limit
+            MBPartner partner = new MBPartner(order.getCtx(), 
+                order.getC_BPartner_ID(), order.get_TrxName());
+            
+            BigDecimal creditAvailable = partner.getSO_CreditLimit()
+                .subtract(partner.getSO_CreditUsed());
+            
+            if (order.getGrandTotal().compareTo(creditAvailable) > 0) {
+                return "Order exceeds customer credit limit. Available: " + 
+                    creditAvailable;
+            }
+            
+            // Validate inventory availability
+            for (MOrderLine line : order.getLines()) {
+                if (line.getM_Product_ID() > 0) {
+                    BigDecimal qtyAvailable = MStorage.getQtyAvailable(
+                        line.getM_Warehouse_ID(), 
+                        line.getM_Product_ID(), 
+                        line.getM_AttributeSetInstance_ID(),
+                        order.get_TrxName());
+                    
+                    if (line.getQtyOrdered().compareTo(qtyAvailable) > 0) {
+                        return "Insufficient inventory for product: " + 
+                            line.getProduct().getName();
+                    }
+                }
+            }
+        }
+        
+        // After complete
+        if (timing == TIMING_AFTER_COMPLETE) {
+            // Send notification email
+            sendOrderConfirmation(order);
+            
+            // Update custom statistics
+            updateSalesStatistics(order);
+        }
+        
+        return null;
+    }
+    
+    private int getDefaultWarehouse() {
+        // Implementation
+        return 0;
+    }
+    
+    private void updatePartnerDependencies(MOrder order) {
+        // Implementation
+    }
+    
+    private void calculateDueDate(MOrder order) {
+        // Implementation
+    }
+    
+    private boolean hasShipments(MOrder order) {
+        // Implementation
+        return false;
+    }
+    
+    private void sendOrderConfirmation(MOrder order) {
+        // Implementation
+    }
+    
+    private void updateSalesStatistics(MOrder order) {
+        // Implementation
+    }
+}
+```
+
+<Warning>
+Model validators run synchronously in the save/delete transaction. Keep operations fast to avoid performance issues. For long-running tasks, use event handlers instead.
+</Warning>
+
+## Implementing Event Handlers
+
+Event handlers process OSGi events asynchronously:
+
+### Service Component Definition
+
+```xml title="OSGI-INF/eventHandler.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.5.0"
+   name="org.example.customplugin.handler.OrderEventHandler">
+   <implementation class="org.example.customplugin.handler.OrderEventHandler"/>
+   <service>
+      <provide interface="org.osgi.service.event.EventHandler"/>
+   </service>
+   <property name="event.topics" type="String">
+      adempiere/po/afterChange
+      adempiere/po/afterNew
+      adempiere/doc/afterComplete
+   </property>
+</scr:component>
+```
+
+### Event Handler Implementation
+
+```java title="OrderEventHandler.java"
+package org.example.customplugin.handler;
+
+import org.osgi.service.event.Event;
+import org.osgi.service.event.EventHandler;
+import org.compiere.model.*;
+import org.compiere.util.CLogger;
+import org.adempiere.base.event.IEventTopics;
+
+/**
+ * Asynchronous event handler for order processing
+ */
+public class OrderEventHandler implements EventHandler {
+    
+    private static CLogger log = CLogger.getCLogger(OrderEventHandler.class);
+    
+    @Override
+    public void handleEvent(Event event) {
+        // Extract event properties
+        String topic = event.getTopic();
+        PO po = (PO) event.getProperty("po");
+        
+        if (po == null)
+            return;
+        
+        try {
+            // Handle specific table events
+            if (MOrder.Table_Name.equals(po.get_TableName())) {
+                handleOrderEvent((MOrder)po, topic);
+            }
+        } catch (Exception e) {
+            log.severe("Error handling event: " + e.getMessage());
+        }
+    }
+    
+    private void handleOrderEvent(MOrder order, String topic) {
+        if (IEventTopics.PO_AFTER_NEW.equals(topic)) {
+            // New order created
+            log.info("New order created: " + order.getDocumentNo());
+            sendWelcomeEmail(order);
+        }
+        
+        if (IEventTopics.DOC_AFTER_COMPLETE.equals(topic)) {
+            // Order completed
+            log.info("Order completed: " + order.getDocumentNo());
+            
+            // Update inventory predictions
+            updateInventoryForecast(order);
+            
+            // Trigger fulfillment workflow
+            triggerFulfillment(order);
+            
+            // Update customer loyalty points
+            updateLoyaltyPoints(order);
+        }
+    }
+    
+    private void sendWelcomeEmail(MOrder order) {
+        // Implementation
+    }
+    
+    private void updateInventoryForecast(MOrder order) {
+        // Implementation
+    }
+    
+    private void triggerFulfillment(MOrder order) {
+        // Implementation
+    }
+    
+    private void updateLoyaltyPoints(MOrder order) {
+        // Implementation
+    }
+}
+```
+
+<Info>
+Event handlers run asynchronously and outside the original transaction. They're ideal for non-critical operations like notifications, analytics, and integration tasks.
+</Info>
+
+## Implementing a Callout
+
+Callouts provide dynamic UI behavior:
+
+```java title="OrderCallout.java"
+package org.example.customplugin.callout;
+
+import org.compiere.model.*;
+import org.compiere.util.*;
+
+/**
+ * Order Callout for dynamic field calculations
+ */
+public class OrderCallout extends CalloutEngine {
+    
+    /**
+     * Partner changed - update price list and location
+     */
+    public String partner(Properties ctx, int WindowNo, 
+        GridTab mTab, GridField mField, Object value) {
+        
+        if (value == null || (Integer)value <= 0)
+            return "";
+        
+        int C_BPartner_ID = (Integer)value;
+        String trxName = Env.getContextAsString(ctx, WindowNo, "trxName");
+        
+        // Load partner
+        MBPartner partner = new MBPartner(ctx, C_BPartner_ID, trxName);
+        
+        // Set price list from partner
+        if (partner.getM_PriceList_ID() > 0) {
+            mTab.setValue("M_PriceList_ID", partner.getM_PriceList_ID());
+        }
+        
+        // Set payment term
+        if (partner.getC_PaymentTerm_ID() > 0) {
+            mTab.setValue("C_PaymentTerm_ID", partner.getC_PaymentTerm_ID());
+        }
+        
+        // Set default location
+        int[] locationIds = MBPartnerLocation.getAllIDs(
+            MBPartnerLocation.Table_Name, 
+            "C_BPartner_ID=?", 
+            trxName,
+            C_BPartner_ID);
+        
+        if (locationIds.length > 0) {
+            mTab.setValue("C_BPartner_Location_ID", locationIds[0]);
+        }
+        
+        return "";
+    }
+    
+    /**
+     * Product changed - calculate price and set UOM
+     */
+    public String product(Properties ctx, int WindowNo,
+        GridTab mTab, GridField mField, Object value) {
+        
+        if (value == null || (Integer)value <= 0)
+            return "";
+        
+        int M_Product_ID = (Integer)value;
+        int M_PriceList_ID = Env.getContextAsInt(ctx, WindowNo, "M_PriceList_ID");
+        BigDecimal Qty = (BigDecimal)mTab.getValue("QtyOrdered");
+        
+        if (M_PriceList_ID <= 0 || Qty == null || Qty.signum() == 0)
+            return "";
+        
+        String trxName = Env.getContextAsString(ctx, WindowNo, "trxName");
+        
+        // Get product
+        MProduct product = MProduct.get(ctx, M_Product_ID);
+        
+        // Set UOM
+        mTab.setValue("C_UOM_ID", product.getC_UOM_ID());
+        
+        // Calculate price
+        MProductPricing pricing = new MProductPricing(
+            M_Product_ID, 
+            Env.getContextAsInt(ctx, WindowNo, "C_BPartner_ID"),
+            Qty,
+            true,
+            trxName);
+        
+        pricing.setM_PriceList_ID(M_PriceList_ID);
+        
+        BigDecimal priceStd = pricing.getPriceStd();
+        BigDecimal priceList = pricing.getPriceList();
+        BigDecimal priceLimit = pricing.getPriceLimit();
+        
+        mTab.setValue("PriceEntered", priceStd);
+        mTab.setValue("PriceList", priceList);
+        mTab.setValue("PriceLimit", priceLimit);
+        
+        // Calculate line amount
+        BigDecimal lineNetAmt = priceStd.multiply(Qty);
+        mTab.setValue("LineNetAmt", lineNetAmt);
+        
+        return "";
+    }
+}
+```
+
+<Accordion title="Callout Registration">
+Callouts must be registered in the Application Dictionary:
+
+1. Navigate to **Table and Column**
+2. Select your table (e.g., C_Order)
+3. Select the column that triggers the callout
+4. Set **Callout** field to: `org.example.customplugin.callout.OrderCallout.partner`
+
+The format is: `fully.qualified.ClassName.methodName`
+</Accordion>
+
+## Plugin Deployment
+
+### Development Deployment
+
+1. Build the plugin bundle (JAR file)
+2. Copy to `plugins/` directory in iDempiere installation
+3. Restart iDempiere server
+
+```bash
+# Build with Maven
+mvn clean package
+
+# Copy to plugins
+cp target/org.example.customplugin-1.0.0.jar /opt/idempiere/plugins/
+
+# Restart
+./idempiere-server.sh restart
+```
+
+### Production Deployment
+
+```bash
+# Install via OSGi console
+telnet localhost 12612
+osgi> install file:///path/to/org.example.customplugin-1.0.0.jar
+Bundle id is 234
+osgi> start 234
+
+# Verify bundle is active
+osgi> ss | grep example
+234    ACTIVE      org.example.customplugin_1.0.0
+```
+
+<Warning>
+Always test plugins in a development environment before deploying to production. Faulty plugins can affect system stability.
+</Warning>
+
+## Plugin Dependencies
+
+Specify dependencies in `MANIFEST.MF`:
+
+```manifest
+# Require specific bundles
+Require-Bundle: org.adempiere.base;bundle-version="13.0.0",
+ org.adempiere.ui.zk;bundle-version="13.0.0",
+ org.adempiere.server;bundle-version="13.0.0"
+
+# Import packages from any bundle
+Import-Package: org.compiere.model,
+ org.compiere.util,
+ org.adempiere.base,
+ org.osgi.framework;version="1.10.0"
+```
+
+<Note>
+`Require-Bundle` creates a hard dependency on specific bundles, while `Import-Package` is more flexible and allows any bundle to satisfy the dependency.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Declarative Services" icon="gear">
+    Prefer OSGi Declarative Services over manual service registration for cleaner code and automatic lifecycle management
+  </Card>
+  
+  <Card title="Version Your APIs" icon="code-branch">
+    Use semantic versioning for exported packages and specify version ranges for imports
+  </Card>
+  
+  <Card title="Keep Validators Fast" icon="bolt">
+    Model validators run synchronously - keep them fast and move long operations to event handlers
+  </Card>
+  
+  <Card title="Handle Errors Gracefully" icon="shield">
+    Always catch and log exceptions in event handlers to prevent system instability
+  </Card>
+</CardGroup>
+
+## Related Topics
+
+<CardGroup cols={3}>
+  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
+    OSGi framework and extension points
+  </Card>
+  <Card title="Data Model" icon="database" href="/concepts/data-model">
+    Persistent objects and model classes
+  </Card>
+  <Card title="Multi-Tenancy" icon="users" href="/concepts/multi-tenancy">
+    Client isolation in plugins
+  </Card>
+</CardGroup>

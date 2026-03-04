@@ -1,0 +1,600 @@
+---
+title: "Payment Processors"
+description: "Integrate payment gateways with iDempiere through the PaymentProcessor extension point"
+---
+
+## Overview
+
+The Payment Processor extension point allows integration with payment gateways for credit card, ACH, and other electronic payment processing.
+
+## Extension Point
+
+**Extension Point ID**: `org.compiere.model.PaymentProcessor`
+
+**Interface**: Abstract class `org.compiere.model.PaymentProcessor`
+
+**Schema Location**: `org.adempiere.base/schema/org.compiere.model.PaymentProcessor.exsd`
+
+## PaymentProcessor Abstract Class
+
+From `org.compiere.model.PaymentProcessor`:
+
+```java
+package org.compiere.model;
+
+import java.math.BigDecimal;
+import java.util.Properties;
+import org.compiere.util.CLogger;
+
+/**
+ * Abstract Payment Processor base class
+ * @author Jorg Janke
+ */
+public abstract class PaymentProcessor {
+    
+    /** Logger */
+    protected CLogger log = CLogger.getCLogger(getClass());
+    
+    /** Payment Processor */
+    protected MBankAccountProcessor p_mbap = null;
+    
+    /** Payment Interface */
+    protected PaymentInterface p_mp = null;
+    
+    /** Encoding (ISO-8859-1 - UTF-8) */
+    public static final String ENCODING = "UTF-8";
+    
+    /** Encode Parameters */
+    private boolean m_encoded = false;
+    
+    /** Timeout in seconds */
+    private int m_timeout = 30;
+    
+    /**
+     * Public Constructor
+     */
+    public PaymentProcessor() {
+    }
+    
+    /**
+     * Initialize processor
+     * @param mbap Bank account processor configuration
+     * @param mp Payment interface with payment data
+     */
+    public void initialize(MBankAccountProcessor mbap, PaymentInterface mp) {
+        p_mbap = mbap;
+        p_mp = mp;
+    }
+    
+    /**
+     * Static Factory method
+     * @param mbap Bank account processor configuration
+     * @param mp Payment interface with payment data
+     * @return PaymentProcessor instance or null
+     */
+    public static PaymentProcessor create(MBankAccountProcessor mbap, 
+                                          PaymentInterface mp) {
+        return Core.getPaymentProcessor(mbap, mp);
+    }
+    
+    /**
+     * Process CreditCard (no date check)
+     * @return true if processed successfully
+     * @throws IllegalArgumentException
+     */
+    public abstract boolean processCC() throws IllegalArgumentException;
+    
+    /**
+     * Is payment processed successfully
+     * @return true if OK
+     */
+    public abstract boolean isProcessedOK();
+    
+    /**
+     * Validate payment before process
+     * @return "" or Error AD_Message
+     * @throws IllegalArgumentException
+     */
+    public String validate() throws IllegalArgumentException {
+        String msg = null;
+        if (MPayment.TENDERTYPE_CreditCard.equals(p_mp.getTenderType())) {
+            msg = validateCreditCard();
+        } else if (MPayment.TENDERTYPE_Check.equals(p_mp.getTenderType())) {
+            msg = validateCheckNo();
+        } else if (MPayment.TENDERTYPE_Account.equals(p_mp.getTenderType())) {
+            msg = validateAccountNo();
+        }
+        return msg;
+    }
+    
+    /**
+     * Validate credit card
+     * @return "" or Error AD_Message
+     * @throws IllegalArgumentException
+     */
+    public String validateCreditCard() throws IllegalArgumentException {
+        String msg = null;
+        if (p_mp.getC_BP_BankAccount_ID() != 0 || 
+            (p_mp.getCustomerPaymentProfileID() != null && 
+             p_mp.getCustomerPaymentProfileID().length() > 0))
+            return msg;
+            
+        msg = MPaymentValidate.validateCreditCardNumber(
+            p_mp.getCreditCardNumber(), p_mp.getCreditCardType());
+        if (msg != null && msg.length() > 0)
+            throw new IllegalArgumentException(Msg.getMsg(Env.getCtx(), msg));
+            
+        msg = MPaymentValidate.validateCreditCardExp(
+            p_mp.getCreditCardExpMM(), p_mp.getCreditCardExpYY());
+        if (msg != null && msg.length() > 0)
+            throw new IllegalArgumentException(Msg.getMsg(Env.getCtx(), msg));
+            
+        if (p_mp.getCreditCardVV() != null && 
+            p_mp.getCreditCardVV().length() > 0) {
+            msg = MPaymentValidate.validateCreditCardVV(
+                p_mp.getCreditCardVV(), p_mp.getCreditCardType());
+            if (msg != null && msg.length() > 0)
+                throw new IllegalArgumentException(Msg.getMsg(Env.getCtx(), msg));
+        }
+        return msg;
+    }
+    
+    /**
+     * Validate account number
+     * @return "" or Error AD_Message
+     */
+    public String validateAccountNo() {
+        return MPaymentValidate.validateAccountNo(p_mp.getAccountNo());
+    }
+    
+    /**
+     * Validate check number
+     * @return "" or Error AD_Message
+     */
+    public String validateCheckNo() {
+        return MPaymentValidate.validateCheckNo(p_mp.getCheckNo());
+    }
+    
+    /**
+     * Set Timeout
+     * @param newTimeout timeout in seconds
+     */
+    public void setTimeout(int newTimeout) {
+        m_timeout = newTimeout;
+    }
+    
+    /**
+     * Get Timeout
+     * @return timeout in seconds
+     */
+    public int getTimeout() {
+        return m_timeout;
+    }
+    
+    /**
+     * Set Encoded
+     * @param doEncode true if encode
+     */
+    public void setEncoded(boolean doEncode) {
+        m_encoded = doEncode;
+    }
+    
+    /**
+     * Is Encoded
+     * @return true if encoded
+     */
+    public boolean isEncoded() {
+        return m_encoded;
+    }
+    
+    /**
+     * Create name=value pair for parameters
+     * @param name parameter name
+     * @param value parameter value
+     * @param maxLength maximum length
+     * @return name=value or name[5]=value if not encoded
+     */
+    protected String createPair(String name, String value, int maxLength) {
+        if (name == null || name.length() == 0 ||
+            value == null || value.length() == 0)
+            return "";
+            
+        if (value.length() > maxLength)
+            value = value.substring(0, maxLength);
+            
+        StringBuilder retValue = new StringBuilder(name);
+        if (m_encoded) {
+            try {
+                value = URLEncoder.encode(value, ENCODING);
+            } catch (UnsupportedEncodingException e) {
+                log.log(Level.SEVERE, value + " - " + e.toString());
+            }
+        } else if (value.indexOf('&') != -1 || value.indexOf('=') != -1) {
+            retValue.append("[").append(value.length()).append("]");
+        }
+        retValue.append("=");
+        retValue.append(value);
+        return retValue.toString();
+    }
+    
+    /**
+     * Get Properties from URL
+     * @param urlString POST url string
+     * @param parameter parameter
+     * @return result as properties
+     */
+    protected Properties getConnectPostProperties(String urlString, 
+                                                   String parameter) {
+        String result = connectPost(urlString, parameter);
+        if (result == null)
+            return null;
+        Properties prop = new Properties();
+        try {
+            String info = URLDecoder.decode(result, ENCODING);
+            StringTokenizer st = new StringTokenizer(info, "&");
+            while (st.hasMoreTokens()) {
+                String token = st.nextToken();
+                int index = token.indexOf('=');
+                if (index == -1)
+                    prop.put(token, "");
+                else {
+                    String key = token.substring(0, index);
+                    String value = token.substring(index+1);
+                    prop.put(key, value);
+                }
+            }
+        } catch (Exception e) {
+            log.log(Level.SEVERE, result, e);
+        }
+        return prop;
+    }
+    
+    /**
+     * Connect via Post
+     * @param urlString url destination (assuming https)
+     * @param parameter parameter
+     * @return response or null if failure
+     */
+    protected String connectPost(String urlString, String parameter) {
+        String response = null;
+        try {
+            URL url = new URL(urlString);
+            HttpsURLConnection connection = 
+                (HttpsURLConnection) url.openConnection();
+            connection.setDoOutput(true);
+            connection.setUseCaches(false);
+            connection.setRequestProperty("Content-Type",
+                "application/x-www-form-urlencoded");
+                
+            // POST the parameter
+            DataOutputStream out = 
+                new DataOutputStream(connection.getOutputStream());
+            out.write(parameter.getBytes());
+            out.flush();
+            out.close();
+            
+            // Read response
+            BufferedReader in = new BufferedReader(
+                new InputStreamReader(connection.getInputStream()));
+            response = in.readLine();
+            in.close();
+        } catch (Exception e) {
+            log.log(Level.SEVERE, urlString, e);
+        }
+        return response;
+    }
+}
+```
+
+## Extension Point Definition
+
+From `org.adempiere.base/schema/org.compiere.model.PaymentProcessor.exsd`:
+
+```xml
+<?xml version='1.0' encoding='UTF-8'?>
+<schema targetNamespace="org.adempiere.base" 
+        xmlns="http://www.w3.org/2001/XMLSchema">
+    <annotation>
+        <appinfo>
+            <meta.schema plugin="org.adempiere.base" 
+                         id="org.compiere.model.PaymentProcessor" 
+                         name="Payment Processor"/>
+        </appinfo>
+        <documentation>
+            Extension to provide payment gateway integration through 
+            payment gateway specific payment processor implementation
+        </documentation>
+    </annotation>
+    
+    <element name="processor">
+        <complexType>
+            <attribute name="priority" type="string">
+                <annotation>
+                    <documentation>
+                        numeric priority value, higher value is of higher priority
+                    </documentation>
+                </annotation>
+            </attribute>
+            <attribute name="class" type="string" use="required">
+                <annotation>
+                    <documentation>
+                        Class name for payment gateway processor that extends 
+                        the org.compiere.model.PaymentProcessor abstract class.
+                    </documentation>
+                    <appinfo>
+                        <meta.attribute kind="java" 
+                            basedOn="org.compiere.model.PaymentProcessor:"/>
+                    </appinfo>
+                </annotation>
+            </attribute>
+        </complexType>
+    </element>
+</schema>
+```
+
+## Registering a Payment Processor
+
+### Plugin XML Declaration
+
+In your plugin's `plugin.xml`:
+
+```xml
+<extension
+    id="com.example.payment.AuthorizeNet"
+    name="Authorize.net"
+    point="org.compiere.model.PaymentProcessor">
+    <processor
+        class="com.example.payment.PP_Authorize"
+        priority="0">
+    </processor>
+</extension>
+```
+
+### Database Configuration
+
+In the **C_PaymentProcessor** table:
+
+```sql
+INSERT INTO C_PaymentProcessor (
+    C_PaymentProcessor_ID,
+    Name,
+    PayProcessorClass,
+    ...
+) VALUES (
+    1000000,
+    'Authorize.net',
+    'com.example.payment.PP_Authorize',
+    ...
+);
+```
+
+The `PayProcessorClass` field must match the `class` attribute in `plugin.xml`.
+
+## Implementation Example
+
+```java
+package com.example.payment;
+
+import org.compiere.model.PaymentProcessor;
+import org.compiere.model.MPayment;
+import java.util.Properties;
+
+public class PP_Authorize extends PaymentProcessor {
+    
+    // Gateway specific constants
+    private static final String GATEWAY_URL = 
+        "https://secure.authorize.net/gateway/transact.dll";
+    
+    // Transaction status
+    private boolean m_ok = false;
+    private String m_errorMessage = null;
+    private String m_referenceNo = null;
+    
+    @Override
+    public boolean processCC() throws IllegalArgumentException {
+        // Validate payment data
+        String msg = validate();
+        if (msg != null && msg.length() > 0) {
+            m_errorMessage = msg;
+            return false;
+        }
+        
+        // Build request parameters
+        StringBuilder parameters = new StringBuilder();
+        parameters.append(createPair("x_login", 
+            p_mbap.getUserID(), 50));
+        parameters.append("&");
+        parameters.append(createPair("x_tran_key", 
+            p_mbap.getPassword(), 50));
+        parameters.append("&");
+        parameters.append(createPair("x_type", 
+            getTransactionType(), 20));
+        parameters.append("&");
+        parameters.append(createPair("x_amount", 
+            p_mp.getPayAmt(), 15));
+        parameters.append("&");
+        parameters.append(createPair("x_card_num", 
+            p_mp.getCreditCardNumber(), 20));
+        parameters.append("&");
+        parameters.append(createPair("x_exp_date", 
+            p_mp.getCreditCardExpMM() + p_mp.getCreditCardExpYY(), 4));
+        parameters.append("&");
+        parameters.append(createPair("x_card_code", 
+            p_mp.getCreditCardVV(), 4));
+        
+        // Add billing information
+        if (p_mp.getA_Name() != null) {
+            parameters.append("&");
+            parameters.append(createPair("x_first_name", 
+                p_mp.getA_Name(), 50));
+        }
+        
+        // Send request to gateway
+        Properties response = getConnectPostProperties(
+            GATEWAY_URL, parameters.toString());
+        
+        if (response == null) {
+            m_errorMessage = "No response from payment gateway";
+            return false;
+        }
+        
+        // Parse response
+        String responseCode = response.getProperty("x_response_code");
+        m_referenceNo = response.getProperty("x_trans_id");
+        String reasonText = response.getProperty("x_response_reason_text");
+        
+        if ("1".equals(responseCode)) {
+            m_ok = true;
+            m_errorMessage = null;
+            // Store reference number in payment
+            if (p_mp instanceof MPayment) {
+                MPayment payment = (MPayment) p_mp;
+                payment.setR_PnRef(m_referenceNo);
+                payment.setR_Info(reasonText);
+            }
+        } else {
+            m_ok = false;
+            m_errorMessage = reasonText;
+            log.warning("Payment declined: " + reasonText);
+        }
+        
+        return m_ok;
+    }
+    
+    @Override
+    public boolean isProcessedOK() {
+        return m_ok;
+    }
+    
+    /**
+     * Get transaction type based on tender type
+     */
+    private String getTransactionType() {
+        if (p_mp.getTrxType() != null) {
+            if (p_mp.getTrxType().equals(MPayment.TRXTYPE_Sales))
+                return "AUTH_CAPTURE";
+            else if (p_mp.getTrxType().equals(MPayment.TRXTYPE_Authorization))
+                return "AUTH_ONLY";
+            else if (p_mp.getTrxType().equals(MPayment.TRXTYPE_CreditPayment))
+                return "CREDIT";
+            else if (p_mp.getTrxType().equals(MPayment.TRXTYPE_Void))
+                return "VOID";
+        }
+        return "AUTH_CAPTURE"; // Default
+    }
+    
+    /**
+     * Get error message
+     */
+    public String getErrorMessage() {
+        return m_errorMessage;
+    }
+    
+    /**
+     * Get reference number
+     */
+    public String getReferenceNo() {
+        return m_referenceNo;
+    }
+}
+```
+
+## Payment Flow
+
+1. **Initialization**: iDempiere calls `initialize()` with configuration
+2. **Validation**: System calls `validate()` to check payment data
+3. **Processing**: System calls `processCC()` to execute transaction
+4. **Status Check**: System calls `isProcessedOK()` to verify result
+5. **Completion**: Payment record updated with result
+
+## PaymentInterface
+
+The `PaymentInterface` provides access to payment data:
+
+```java
+public interface PaymentInterface {
+    // Payment amount
+    BigDecimal getPayAmt();
+    
+    // Tender type (Credit Card, Check, etc)
+    String getTenderType();
+    
+    // Transaction type (Sale, Authorization, Void, etc)
+    String getTrxType();
+    
+    // Credit card details
+    String getCreditCardNumber();
+    String getCreditCardType();
+    int getCreditCardExpMM();
+    int getCreditCardExpYY();
+    String getCreditCardVV();
+    
+    // Check details
+    String getCheckNo();
+    String getRoutingNo();
+    String getAccountNo();
+    
+    // Account details
+    int getC_BP_BankAccount_ID();
+    String getCustomerPaymentProfileID();
+    
+    // Billing information
+    String getA_Name();
+    String getA_Email();
+    String getA_City();
+    String getA_State();
+    String getA_Zip();
+    String getA_Country();
+}
+```
+
+## Testing
+
+### Unit Tests
+
+```java
+public class PP_AuthorizeTest {
+    
+    @Test
+    public void testValidation() {
+        PP_Authorize processor = new PP_Authorize();
+        MBankAccountProcessor mbap = createTestConfig();
+        PaymentInterface payment = createTestPayment();
+        
+        processor.initialize(mbap, payment);
+        String error = processor.validate();
+        
+        assertNull("Validation should pass", error);
+    }
+    
+    @Test
+    public void testProcessing() {
+        PP_Authorize processor = new PP_Authorize();
+        // Use test gateway credentials
+        MBankAccountProcessor mbap = createTestConfig();
+        PaymentInterface payment = createValidPayment();
+        
+        processor.initialize(mbap, payment);
+        boolean success = processor.processCC();
+        
+        assertTrue("Processing should succeed", success);
+        assertTrue("Status should be OK", processor.isProcessedOK());
+    }
+}
+```
+
+## Best Practices
+
+1. **Security**: Never log sensitive payment data
+2. **Error Handling**: Provide clear error messages for troubleshooting
+3. **Timeouts**: Set appropriate timeouts for gateway connections
+4. **Testing**: Use gateway sandbox/test modes for development
+5. **Validation**: Validate all payment data before sending to gateway
+6. **Logging**: Log transaction IDs for reconciliation
+7. **PCI Compliance**: Follow PCI DSS requirements for card data
+
+## Related Topics
+
+- [Plugin Extensions](/api/plugin-extensions): Extension point framework
+- [Tax Providers](/api/tax-providers): Tax calculation integration
+- [Shipment Processors](/api/shipment-processors): Shipping integration

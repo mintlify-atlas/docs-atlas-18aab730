@@ -1,0 +1,272 @@
+---
+title: 'Code Standards'
+description: 'Coding conventions and best practices for iDempiere development'
+---
+
+iDempiere follows specific coding conventions and best practices to maintain code quality and consistency. Before contributing code, please review these standards.
+
+## Essential Resources
+
+<CardGroup cols={2}>
+  <Card title="Contributing to Trunk" icon="book" href="https://wiki.idempiere.org/en/Contributing_to_Trunk">
+    Comprehensive guide on coding conventions, guidelines, and benchmarks
+  </Card>
+  <Card title="Fork and Branch Workflow" icon="code-branch" href="https://wiki.idempiere.org/en/Fork_and_Branch_Git_Workflow">
+    Detailed explanation of the Git workflow for contributions
+  </Card>
+</CardGroup>
+
+<Note>
+  Before integrating any code change, please read the [Contributing to iDempiere's core](https://wiki.idempiere.org/en/Contributing_to_Trunk) guide to know more about coding conventions, guidelines and benchmarks.
+</Note>
+
+## Commit Message Format
+
+All commits must follow the iDempiere standard commit message format:
+
+```
+IDEMPIERE-[####] [Ticket Description]
+```
+
+### Examples
+
+<CodeGroup>
+```bash Good Examples
+git commit -m "IDEMPIERE-1234 Fix tax calculation for EU countries"
+git commit -m "IDEMPIERE-5678 Add support for custom payment methods"
+git commit -m "IDEMPIERE-9012 Improve performance of inventory queries"
+```
+
+```bash Bad Examples
+git commit -m "Fixed bug"  # Missing ticket number and description
+git commit -m "IDEMPIERE-1234"  # Missing description
+git commit -m "Add feature"  # Missing ticket number
+```
+</CodeGroup>
+
+<Info>
+  The ticket number should correspond to a JIRA issue at [https://idempiere.atlassian.net](https://idempiere.atlassian.net)
+</Info>
+
+## Java Code Standards
+
+iDempiere is primarily written in Java. Follow these conventions:
+
+### File Headers
+
+All Java files should include the standard iDempiere license header:
+
+```java
+/***********************************************************************
+ * This file is part of iDempiere ERP Open Source                      *
+ * http://www.idempiere.org                                            *
+ *                                                                     *
+ * Copyright (C) Contributors                                          *
+ *                                                                     *
+ * This program is free software; you can redistribute it and/or       *
+ * modify it under the terms of the GNU General Public License         *
+ * as published by the Free Software Foundation; either version 2      *
+ * of the License, or (at your option) any later version.              *
+ *                                                                     *
+ * This program is distributed in the hope that it will be useful,     *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of      *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the        *
+ * GNU General Public License for more details.                        *
+ *                                                                     *
+ * You should have received a copy of the GNU General Public License   *
+ * along with this program; if not, write to the Free Software         *
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,          *
+ * MA 02110-1301, USA.                                                 *
+ *                                                                     *
+ * Contributors:                                                       *
+ * - [Your Name]                                                       *
+ **********************************************************************/
+```
+
+### Package Structure
+
+iDempiere follows a logical package structure:
+
+- `org.compiere.model` - Model classes (persistent objects)
+- `org.compiere.process` - Business processes
+- `org.compiere.util` - Utility classes
+- `org.adempiere.webui` - Web UI components
+- `org.idempiere.test` - Test cases
+
+### Naming Conventions
+
+<AccordionGroup>
+  <Accordion title="Classes">
+    - Use PascalCase for class names
+    - Model classes start with `M` (e.g., `MOrder`, `MInvoice`)
+    - Process classes end with `Process` (e.g., `GenerateInvoiceProcess`)
+    - Test classes end with `Test` (e.g., `SalesOrderTest`)
+  </Accordion>
+  
+  <Accordion title="Methods">
+    - Use camelCase for method names
+    - Use descriptive names that indicate what the method does
+    - Boolean methods should start with `is`, `has`, or `can`
+  </Accordion>
+  
+  <Accordion title="Variables">
+    - Use camelCase for variable names
+    - Constants should be in UPPER_CASE with underscores
+    - Use meaningful names that describe the variable's purpose
+  </Accordion>
+  
+  <Accordion title="Database Columns">
+    - Use database column naming conventions
+    - Prefix with table abbreviation (e.g., `C_Order_ID`, `M_Product_ID`)
+  </Accordion>
+</AccordionGroup>
+
+## Code Quality Guidelines
+
+### General Principles
+
+<CardGroup cols={2}>
+  <Card title="Write Clean Code" icon="broom">
+    - Keep methods short and focused
+    - Use meaningful variable and method names
+    - Avoid deep nesting
+    - Follow DRY (Don't Repeat Yourself) principle
+  </Card>
+  
+  <Card title="Document Your Code" icon="book">
+    - Add Javadoc comments for public methods and classes
+    - Explain complex algorithms
+    - Document assumptions and limitations
+  </Card>
+  
+  <Card title="Handle Errors Properly" icon="triangle-exclamation">
+    - Use appropriate exception handling
+    - Log errors with meaningful messages
+    - Don't swallow exceptions silently
+  </Card>
+  
+  <Card title="Optimize Performance" icon="gauge">
+    - Minimize database queries
+    - Use appropriate data structures
+    - Cache when appropriate
+    - Profile before optimizing
+  </Card>
+</CardGroup>
+
+### Database Best Practices
+
+- Use prepared statements to prevent SQL injection
+- Always close database connections properly
+- Use transactions appropriately
+- Minimize the number of database round trips
+- Use connection pooling
+
+### UI Development
+
+- Follow the existing UI patterns and conventions
+- Ensure accessibility
+- Test in different browsers
+- Support responsive design principles
+
+## Testing Requirements
+
+<Info>
+  See the [Testing Guide](/community/testing) for detailed information about writing and running tests.
+</Info>
+
+### Test Coverage
+
+- Write unit tests for new functionality
+- Ensure existing tests pass before submitting PR
+- Add integration tests for complex features
+- Test edge cases and error conditions
+
+### Test Data
+
+- Use Garden World data for testing when possible
+- Test on [test sites](https://www.idempiere.org/test-sites) before submitting
+- Ensure tests are repeatable and deterministic
+
+## Code Review Process
+
+All code contributions go through a review process:
+
+<Steps>
+  <Step title="Automated Checks">
+    Your pull request will be automatically checked for:
+    - Build success
+    - Test passage
+    - Code style compliance
+  </Step>
+  
+  <Step title="Peer Review">
+    Core contributors will review your code for:
+    - Code quality and standards compliance
+    - Functionality and correctness
+    - Performance implications
+    - Security concerns
+  </Step>
+  
+  <Step title="Address Feedback">
+    Respond to review comments and make requested changes:
+    - Push additional commits to your branch
+    - Explain your approach if needed
+    - Ask questions if feedback is unclear
+  </Step>
+  
+  <Step title="Approval and Merge">
+    Once approved, a maintainer will merge your contribution:
+    - Your code becomes part of iDempiere
+    - You're listed as a contributor
+    - Your changes will be in the next release
+  </Step>
+</Steps>
+
+## Plugin Development Standards
+
+If you're developing plugins, refer to:
+
+- [Plugin Guidelines](https://wiki.idempiere.org/en/Plugin_Guidelines)
+- [Available Plugins](https://wiki.idempiere.org/en/Category:Available_Plugins)
+
+### Plugin Best Practices
+
+- Keep plugins focused on specific functionality
+- Document plugin configuration and usage
+- Provide installation instructions
+- Maintain compatibility with iDempiere versions
+- Follow the same coding standards as core
+
+## License and Copyright
+
+iDempiere is licensed under the GNU General Public License (GPL) version 2.
+
+<Warning>
+  All contributions must be compatible with GPL v2. By contributing, you agree that your contributions will be licensed under the same license.
+</Warning>
+
+## Getting Help
+
+If you have questions about code standards:
+
+- Ask in [Mattermost](https://mattermost.idempiere.org/)
+- Post in the [forums](https://www.idempiere.org/forums)
+- Review the [wiki documentation](https://wiki.idempiere.org)
+- Look at existing code for examples
+
+## Additional Resources
+
+<CardGroup cols={2}>
+  <Card title="Contributing Guide" icon="code-pull-request" href="/community/contributing">
+    Learn the contribution workflow
+  </Card>
+  <Card title="Testing Guide" icon="vial" href="/community/testing">
+    Learn about testing in iDempiere
+  </Card>
+  <Card title="Wiki" icon="book" href="https://wiki.idempiere.org">
+    Browse comprehensive documentation
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/idempiere/idempiere">
+    View the source code
+  </Card>
+</CardGroup>

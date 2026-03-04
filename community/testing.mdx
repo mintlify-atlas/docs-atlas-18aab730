@@ -1,0 +1,582 @@
+---
+title: 'Testing'
+description: 'Learn about testing in iDempiere and how to write and run tests'
+---
+
+iDempiere has a comprehensive test suite to ensure code quality and prevent regressions. This guide covers the testing framework and how to write and run tests.
+
+## Test Structure
+
+All tests are located in the `org.idempiere.test` module:
+
+```
+org.idempiere.test/
+├── src/
+│   └── org/
+│       └── idempiere/
+│           └── test/
+│               ├── AbstractTestCase.java
+│               ├── DictionaryIDs.java
+│               ├── model/          # Model/business logic tests
+│               ├── process/        # Process tests
+│               ├── form/           # Form tests
+│               ├── ui/             # UI tests
+│               ├── workflow/       # Workflow tests
+│               ├── acct/           # Accounting tests
+│               ├── base/           # Base utility tests
+│               ├── event/          # Event handler tests
+│               ├── performance/    # Performance tests
+│               └── ...
+├── pom.xml
+├── idempiere.unit.test.launch
+└── idempiere.unit.test.parallel.launch
+```
+
+## Testing Framework
+
+iDempiere uses **JUnit 5** (Jupiter) as its testing framework.
+
+### Key Components
+
+<AccordionGroup>
+  <Accordion title="AbstractTestCase">
+    Base class for all test cases. Provides:
+    - Transaction management for test isolation
+    - Login context setup (Garden World client)
+    - Common test utilities
+    - Cleanup after each test
+    
+    Location: `org.idempiere.test/src/org/idempiere/test/AbstractTestCase.java`
+  </Accordion>
+  
+  <Accordion title="DictionaryIDs">
+    Contains constants for all standard Garden World IDs:
+    - Clients, Organizations, Users
+    - Products, Partners, Warehouses
+    - Document types and other reference data
+    
+    Use these constants instead of hardcoding IDs in tests.
+  </Accordion>
+  
+  <Accordion title="Garden World Data">
+    iDempiere's standard test dataset:
+    - Pre-configured business entities
+    - Sample products and partners
+    - Standard workflows and processes
+    - Used across all tests for consistency
+  </Accordion>
+</AccordionGroup>
+
+## Writing Tests
+
+### Basic Test Structure
+
+All tests should extend `AbstractTestCase`:
+
+```java
+package org.idempiere.test.model;
+
+import static org.junit.jupiter.api.Assertions.*;
+import org.idempiere.test.AbstractTestCase;
+import org.junit.jupiter.api.Test;
+
+public class MyTest extends AbstractTestCase {
+
+    @Test
+    public void testSomething() {
+        // Your test code here
+    }
+}
+```
+
+### Using Test Context
+
+The `AbstractTestCase` provides a pre-configured context:
+
+```java
+import org.compiere.util.Env;
+import org.idempiere.test.DictionaryIDs;
+
+@Test
+public void testWithContext() {
+    // Access to Garden World context
+    int clientId = GARDEN_WORLD_CLIENT; // From AbstractTestCase
+    int orgId = GARDEN_WORLD_HQ_ORG;
+    
+    // Use DictionaryIDs for reference data
+    int productId = DictionaryIDs.M_Product.AZALEA_BUSH.id;
+    int partnerId = DictionaryIDs.C_BPartner.JOE_BLOCK.id;
+    
+    // Transaction name from test case
+    String trxName = getTrxName();
+    
+    // Your test logic
+}
+```
+
+### Test Annotations
+
+<AccordionGroup>
+  <Accordion title="@Test">
+    Marks a method as a test method:
+    
+    ```java
+    @Test
+    public void testCalculation() {
+        // Test logic
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="@Isolated">
+    Tests that cannot run in parallel with others:
+    
+    ```java
+    @Isolated
+    public class SalesOrderTest extends AbstractTestCase {
+        // Test methods
+    }
+    ```
+    
+    Use when tests:
+    - Modify global state
+    - Use shared resources
+    - Require specific database state
+  </Accordion>
+  
+  <Accordion title="@BeforeEach / @AfterEach">
+    Setup and teardown for each test:
+    
+    ```java
+    @BeforeEach
+    public void setup() {
+        // Runs before each test method
+    }
+    
+    @AfterEach
+    public void cleanup() {
+        // Runs after each test method
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Assertions
+
+Use JUnit 5 assertions:
+
+```java
+import static org.junit.jupiter.api.Assertions.*;
+
+@Test
+public void testAssertions() {
+    // Equality
+    assertEquals(expected, actual);
+    assertNotEquals(expected, actual);
+    
+    // Boolean conditions
+    assertTrue(condition);
+    assertFalse(condition);
+    
+    // Null checks
+    assertNotNull(object);
+    assertNull(object);
+    
+    // Exceptions
+    assertThrows(Exception.class, () -> {
+        // Code that should throw
+    });
+    
+    // Arrays and collections
+    assertArrayEquals(expectedArray, actualArray);
+}
+```
+
+## Test Categories
+
+### Model Tests
+
+Test business logic and data models:
+
+```java
+package org.idempiere.test.model;
+
+import org.compiere.model.MOrder;
+import org.compiere.model.MBPartner;
+import org.idempiere.test.AbstractTestCase;
+import org.idempiere.test.DictionaryIDs;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+public class SalesOrderTest extends AbstractTestCase {
+    
+    @Test
+    public void testCreateOrder() {
+        MOrder order = new MOrder(Env.getCtx(), 0, getTrxName());
+        order.setBPartner(MBPartner.get(Env.getCtx(), 
+            DictionaryIDs.C_BPartner.JOE_BLOCK.id));
+        order.setC_DocTypeTarget_ID(MOrder.DocSubTypeSO_Standard);
+        
+        assertTrue(order.save(), "Order should be saved");
+        assertNotNull(order.getDocumentNo(), "Document number should be generated");
+    }
+}
+```
+
+Examples in codebase:
+- `SalesOrderTest.java` - Sales order functionality
+- `PurchaseOrderTest.java` - Purchase order functionality
+- `InvoiceCustomerTest.java` - Customer invoice tests
+- `InventoryTest.java` - Inventory management
+
+### Process Tests
+
+Test business processes:
+
+```java
+package org.idempiere.test.process;
+
+import org.compiere.process.ProcessInfo;
+import org.idempiere.test.AbstractTestCase;
+import org.junit.jupiter.api.Test;
+
+public class MyProcessTest extends AbstractTestCase {
+    
+    @Test
+    public void testProcess() {
+        ProcessInfo pi = new ProcessInfo("Test", processId);
+        // Configure and run process
+        // Assert results
+    }
+}
+```
+
+### UI Tests
+
+Test user interface components:
+
+- `InfoWindowTest.java` - Info window functionality
+- `GridFieldTest.java` - Grid field tests
+- `FormTest.java` - Form tests
+
+### Integration Tests
+
+Test complete workflows:
+
+```java
+@Test
+public void testCompleteOrderToInvoice() {
+    // Create order
+    MOrder order = createTestOrder();
+    
+    // Complete order
+    order.processIt(DocAction.ACTION_Complete);
+    assertTrue(order.save());
+    
+    // Generate shipment
+    // Generate invoice
+    // Verify accounting
+}
+```
+
+## Running Tests
+
+### From Eclipse/IDE
+
+1. Right-click on test class or method
+2. Select "Run As" > "JUnit Test"
+
+Or use the provided launch configurations:
+- `idempiere.unit.test.launch` - Run all tests sequentially
+- `idempiere.unit.test.parallel.launch` - Run tests in parallel
+
+### From Command Line
+
+Using Maven:
+
+```bash
+# Run all tests
+mvn test
+
+# Run specific test class
+mvn test -Dtest=SalesOrderTest
+
+# Run specific test method
+mvn test -Dtest=SalesOrderTest#testCreateOrder
+
+# Skip tests
+mvn clean install -DskipTests
+```
+
+### Continuous Integration
+
+Tests run automatically on:
+- Pull request creation
+- Push to main branches
+- Before releases
+
+## Testing Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Test Isolation" icon="flask-vial">
+    - Each test should be independent
+    - Use transactions that rollback
+    - Don't depend on test execution order
+    - Clean up test data properly
+  </Card>
+  
+  <Card title="Use Garden World Data" icon="database">
+    - Use DictionaryIDs for reference data
+    - Test with standard Garden World entities
+    - Ensures tests work on any system
+    - Makes tests reproducible
+  </Card>
+  
+  <Card title="Test Edge Cases" icon="arrows-split-up-and-left">
+    - Test normal conditions
+    - Test boundary conditions
+    - Test error conditions
+    - Test null/empty values
+  </Card>
+  
+  <Card title="Keep Tests Fast" icon="gauge-high">
+    - Mock external dependencies
+    - Minimize database operations
+    - Use parallel execution when possible
+    - Avoid Thread.sleep()
+  </Card>
+</CardGroup>
+
+### Writing Good Tests
+
+<Steps>
+  <Step title="Test one thing">
+    Each test method should verify one specific behavior.
+  </Step>
+  
+  <Step title="Use descriptive names">
+    Test names should clearly indicate what is being tested:
+    
+    ```java
+    @Test
+    public void testDatePromisedValidation() { }
+    
+    @Test  
+    public void testTaxCalculationForEUCountries() { }
+    ```
+  </Step>
+  
+  <Step title="Follow AAA pattern">
+    Structure tests as Arrange-Act-Assert:
+    
+    ```java
+    @Test
+    public void testDiscount() {
+        // Arrange
+        MOrder order = createTestOrder();
+        
+        // Act
+        order.setDiscount(10.0);
+        
+        // Assert
+        assertEquals(90.0, order.getGrandTotal());
+    }
+    ```
+  </Step>
+  
+  <Step title="Add comments for complex tests">
+    Explain what the test verifies and why:
+    
+    ```java
+    @Test
+    /**
+     * Test that order validation fails when multiple 
+     * date promised values exist with complete order delivery rule.
+     * https://idempiere.atlassian.net/browse/IDEMPIERE-235
+     */
+    public void testDatePromisedValidation() {
+        // Test implementation
+    }
+    ```
+  </Step>
+</Steps>
+
+## Test Data Management
+
+### Using DictionaryIDs
+
+Always use constants from `DictionaryIDs`:
+
+```java
+import org.idempiere.test.DictionaryIDs;
+
+// Products
+int productId = DictionaryIDs.M_Product.AZALEA_BUSH.id;
+int productId2 = DictionaryIDs.M_Product.MULCH.id;
+
+// Business Partners
+int partnerId = DictionaryIDs.C_BPartner.JOE_BLOCK.id;
+int vendorId = DictionaryIDs.C_BPartner.PATIO.id;
+
+// Warehouses
+int warehouseId = DictionaryIDs.M_Warehouse.HQ.id;
+
+// Organizations
+int orgId = DictionaryIDs.AD_Org.HQ.id;
+```
+
+### Transaction Management
+
+`AbstractTestCase` automatically handles transactions:
+
+```java
+public class MyTest extends AbstractTestCase {
+    
+    @Test
+    public void testSomething() {
+        // Get transaction name from test case
+        String trxName = getTrxName();
+        
+        // Use in database operations
+        MOrder order = new MOrder(Env.getCtx(), 0, trxName);
+        
+        // Transaction automatically rolls back after test
+    }
+}
+```
+
+## Debugging Tests
+
+### Running with Debug Mode
+
+1. Set breakpoints in test code
+2. Right-click test > "Debug As" > "JUnit Test"
+3. Step through code execution
+
+### Logging
+
+Use standard logging in tests:
+
+```java
+import java.util.logging.Level;
+
+@Test
+public void testWithLogging() {
+    log.log(Level.INFO, "Testing something");
+    // Test logic
+}
+```
+
+### Test on Test Sites
+
+Before submitting, verify on [test sites](https://www.idempiere.org/test-sites).
+
+## Common Test Patterns
+
+### Testing Document Processing
+
+```java
+@Test
+public void testDocumentCompletion() {
+    MOrder order = createTestOrder();
+    
+    // Process document
+    order.processIt(DocAction.ACTION_Complete);
+    order.saveEx();
+    
+    // Verify status
+    assertEquals(DocAction.STATUS_Completed, order.getDocStatus());
+    
+    // Verify accounting was created
+    String whereClause = "AD_Table_ID=? AND Record_ID=?";
+    int count = new Query(Env.getCtx(), MFactAcct.Table_Name, 
+        whereClause, getTrxName())
+        .setParameters(MOrder.Table_ID, order.getC_Order_ID())
+        .count();
+    assertTrue(count > 0, "Accounting entries should be created");
+}
+```
+
+### Testing Validation
+
+```java
+@Test
+public void testValidation() {
+    MOrder order = new MOrder(Env.getCtx(), 0, getTrxName());
+    
+    // Missing required field should fail validation
+    assertFalse(order.save(), "Save should fail without partner");
+    
+    // With required field should succeed
+    order.setBPartner(MBPartner.get(Env.getCtx(), 
+        DictionaryIDs.C_BPartner.JOE_BLOCK.id));
+    assertTrue(order.save(), "Save should succeed with partner");
+}
+```
+
+### Testing Calculations
+
+```java
+@Test
+public void testPriceCalculation() {
+    BigDecimal qty = new BigDecimal("10");
+    BigDecimal price = new BigDecimal("100");
+    BigDecimal tax = new BigDecimal("10"); // 10%
+    
+    BigDecimal lineTotal = qty.multiply(price);
+    BigDecimal taxAmount = lineTotal.multiply(tax).divide(
+        new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+    BigDecimal grandTotal = lineTotal.add(taxAmount);
+    
+    assertEquals(new BigDecimal("1000.00"), lineTotal);
+    assertEquals(new BigDecimal("100.00"), taxAmount);
+    assertEquals(new BigDecimal("1100.00"), grandTotal);
+}
+```
+
+## Contributing Tests
+
+<Info>
+  When contributing code, always include appropriate tests for your changes.
+</Info>
+
+### Test Requirements
+
+<Steps>
+  <Step title="Write tests for new features">
+    Every new feature should include tests that verify its functionality.
+  </Step>
+  
+  <Step title="Write tests for bug fixes">
+    Bug fixes should include a test that would have caught the bug.
+  </Step>
+  
+  <Step title="Ensure all tests pass">
+    Run the full test suite before submitting your pull request:
+    
+    ```bash
+    mvn clean test
+    ```
+  </Step>
+  
+  <Step title="Update existing tests">
+    If your changes affect existing functionality, update the relevant tests.
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Contributing Guide" icon="code-pull-request" href="/community/contributing">
+    Learn the contribution workflow
+  </Card>
+  <Card title="Code Standards" icon="file-code" href="/community/code-standards">
+    Review coding conventions
+  </Card>
+  <Card title="Test Sites" icon="browser" href="https://www.idempiere.org/test-sites">
+    Try iDempiere test environments
+  </Card>
+  <Card title="JIRA" icon="bug" href="https://idempiere.atlassian.net">
+    Browse and create issues
+  </Card>
+</CardGroup>

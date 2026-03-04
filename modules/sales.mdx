@@ -1,0 +1,589 @@
+---
+title: "Sales Module"
+description: "Order management, quotations, and customer fulfillment in iDempiere"
+---
+
+The Sales module in iDempiere provides comprehensive order-to-cash capabilities, from quotation through order processing, shipment, and invoicing.
+
+## Overview
+
+iDempiere's sales management system streamlines the entire sales process with integrated quote management, order processing, fulfillment, and invoicing. The module supports complex sales scenarios including drop shipments, partial deliveries, back orders, and multi-currency transactions.
+
+<CardGroup cols={2}>
+  <Card title="Quotations" icon="file-contract" href="#sales-quotations">
+    Create and manage customer quotes and proposals
+  </Card>
+  <Card title="Sales Orders" icon="cart-shopping" href="#sales-orders">
+    Process customer orders with credit checking
+  </Card>
+  <Card title="Order Fulfillment" icon="truck" href="#order-fulfillment">
+    Pick, pack, and ship orders to customers
+  </Card>
+  <Card title="Invoicing" icon="file-invoice" href="#customer-invoicing">
+    Generate and manage customer invoices
+  </Card>
+</CardGroup>
+
+## Sales Quotations
+
+Create professional quotations and convert them to orders.
+
+### Quote Process
+
+<Steps>
+  <Step title="Create Quote">
+    Navigate to **Sales Order** and set the document type to "Quotation"
+  </Step>
+  <Step title="Select Customer">
+    Choose the customer or prospect, which loads their default price list and terms
+  </Step>
+  <Step title="Add Products">
+    Enter line items with products, quantities, and pricing
+  </Step>
+  <Step title="Apply Discounts">
+    Add line-level or order-level discounts as needed
+  </Step>
+  <Step title="Complete Quote">
+    Complete the quotation to lock pricing and make it available to customer
+  </Step>
+  <Step title="Convert to Order">
+    When customer accepts, use **Copy From** to create sales order from quote
+  </Step>
+</Steps>
+
+### Quote Features
+
+- **Multiple Quotes** - Create unlimited quotes per customer
+- **Quote Validity** - Set expiration dates for pricing
+- **Alternative Products** - Offer product substitutions or upgrades
+- **Configurable Products** - Build complex product configurations
+- **Quote Versions** - Revise quotes while maintaining history
+- **Quote Analytics** - Track quote win/loss rates
+
+<Tip>
+Link quotations to CRM opportunities to track conversion rates and sales pipeline velocity. Use quote templates for commonly requested configurations.
+</Tip>
+
+## Sales Orders
+
+Manage customer orders from entry through fulfillment.
+
+### Order Entry Process
+
+<Steps>
+  <Step title="Navigate to Sales Order">
+    Go to **Sales Order** and click **New**
+  </Step>
+  <Step title="Select Customer">
+    Choose the customer, loading their price list, payment terms, and delivery settings
+  </Step>
+  <Step title="Credit Check">
+    System automatically checks customer credit status and available credit
+  </Step>
+  <Step title="Enter Order Lines">
+    Add products with quantities, which automatically prices from customer price list
+  </Step>
+  <Step title="Set Delivery Details">
+    Specify ship-to address, delivery date, and shipping method
+  </Step>
+  <Step title="Review Totals">
+    Verify pricing, taxes, and total amount
+  </Step>
+  <Step title="Complete Order">
+    Completing reserves inventory and makes order ready for fulfillment
+  </Step>
+</Steps>
+
+### Order Types
+
+iDempiere supports various sales scenarios:
+
+- **Standard Order** - Regular sales with inventory shipment
+- **Drop Shipment** - Vendor ships directly to customer without inventory
+- **POS Order** - Point-of-sale cash transactions
+- **Prepay Order** - Payment required before shipment
+- **Warehouse Order** - Transfer between warehouses
+- **Credit Order** - Return merchandise authorization (RMA)
+
+### Order Features
+
+- **Multiple Lines** - Unlimited products per order
+- **Partial Shipments** - Ship and invoice in multiple deliveries
+- **Back Orders** - Automatically manage out-of-stock items
+- **Promised Dates** - Track customer requested vs. committed delivery dates
+- **Order Reservations** - Reserve inventory for specific orders
+- **Change Management** - Modify orders before shipment with audit trail
+
+<Note>
+Completing a sales order reserves inventory for the customer and prevents other orders from allocating the same stock.
+</Note>
+
+## Pricing and Discounts
+
+Implement flexible pricing strategies.
+
+### Price Lists
+
+Manage customer-specific pricing:
+
+- **Base Price Lists** - Standard pricing by currency
+- **Customer Price Lists** - Special pricing for specific customers
+- **Volume Pricing** - Quantity break discounts
+- **Promotional Pricing** - Time-limited special prices
+- **Multi-Currency** - Prices in multiple currencies
+
+### Discount Management
+
+Apply various discount types:
+
+- **Line Discounts** - Product-level discounts
+- **Order Discounts** - Overall order percentage off
+- **Volume Discounts** - Automatic quantity-based discounts
+- **Customer Discounts** - Fixed discount by customer group
+- **Promotional Discounts** - Campaign-based special offers
+- **Discount Schemas** - Complex multi-tier discount rules
+
+### Price Calculation
+
+<Steps>
+  <Step title="Base Price">
+    System starts with product's base price from customer's price list
+  </Step>
+  <Step title="Volume Discount">
+    Apply quantity-based discount if thresholds are met
+  </Step>
+  <Step title="Customer Discount">
+    Apply customer-specific discount percentage
+  </Step>
+  <Step title="Promotional Discount">
+    Add any active promotional discounts
+  </Step>
+  <Step title="Manual Override">
+    Salespeople can manually adjust pricing within authorization limits
+  </Step>
+  <Step title="Final Price">
+    Calculate net price and extend by quantity
+  </Step>
+</Steps>
+
+<Warning>
+Price overrides below cost or outside approval limits may require manager authorization. Configure pricing approval workflows to prevent margin erosion.
+</Warning>
+
+## Credit Management
+
+Control customer credit and minimize risk.
+
+### Credit Checking
+
+Automatic credit verification on order entry:
+
+- **Credit Limit** - Maximum outstanding balance allowed
+- **Credit Used** - Current receivables plus new order
+- **Credit Available** - Remaining credit capacity
+- **Credit Status** - OK, Watch, Hold, or Over Limit
+- **Payment Performance** - Historical payment behavior
+
+### Credit Actions
+
+- **Credit OK** - Order proceeds normally
+- **Credit Watch** - Warning but order allowed
+- **Credit Hold** - Order blocked pending approval
+- **Over Limit** - Prevent order completion until resolved
+
+### Credit Management Process
+
+<Steps>
+  <Step title="Review Credit Status">
+    Credit manager reviews held orders and customer payment history
+  </Step>
+  <Step title="Collect Payment">
+    Contact customer for payment or payment commitment
+  </Step>
+  <Step title="Adjust Credit Limit">
+    Increase limit if justified by payment history or business need
+  </Step>
+  <Step title="Release Hold">
+    Manually release order from credit hold
+  </Step>
+  <Step title="Approve Order">
+    Order continues to fulfillment process
+  </Step>
+</Steps>
+
+<Tip>
+Set credit limits proactively based on payment history and business relationship. Review and adjust limits quarterly to align with customer growth.
+</Tip>
+
+## Order Fulfillment
+
+Pick, pack, and ship orders efficiently.
+
+### Fulfillment Workflow
+
+<Steps>
+  <Step title="Order Release">
+    Completed orders appear in fulfillment queue
+  </Step>
+  <Step title="Pick Generation">
+    Generate pick lists for warehouse staff
+  </Step>
+  <Step title="Inventory Picking">
+    Pick items from warehouse locations
+  </Step>
+  <Step title="Packing">
+    Pack items and create shipment document
+  </Step>
+  <Step title="Shipping">
+    Generate shipping labels and update carrier tracking
+  </Step>
+  <Step title="Shipment Confirmation">
+    Complete shipment to reduce inventory and trigger invoicing
+  </Step>
+</Steps>
+
+### Shipment Management
+
+Create and manage customer shipments:
+
+- **Create from Order** - Generate shipment lines from sales orders
+- **Pick Confirmation** - Confirm picked quantities and locations
+- **Serial/Lot Selection** - Choose specific units or batches to ship
+- **Packing Slip** - Print packing documentation
+- **Shipping Labels** - Generate carrier shipping labels
+- **Tracking Numbers** - Record carrier tracking information
+
+### Partial Shipments
+
+Handle incomplete fulfillment:
+
+- **Ship Available** - Ship in-stock items immediately
+- **Back Order** - Automatically create back order for remaining items
+- **Split Delivery** - Ship from multiple warehouses
+- **Substitute Products** - Offer alternatives for out-of-stock items
+
+### Drop Shipments
+
+Manage vendor direct shipments:
+
+<Steps>
+  <Step title="Create Sales Order">
+    Enter sales order marked as drop shipment
+  </Step>
+  <Step title="Generate Purchase Order">
+    System creates PO to vendor with customer ship-to address
+  </Step>
+  <Step title="Vendor Ships">
+    Vendor ships directly to customer
+  </Step>
+  <Step title="Record Receipt">
+    Create drop ship receipt when vendor confirms shipment
+  </Step>
+  <Step title="Invoice Customer">
+    Generate customer invoice from drop ship receipt
+  </Step>
+</Steps>
+
+<Note>
+Drop shipments bypass your warehouse, saving handling costs and reducing delivery time. The system still tracks the transaction for proper revenue recognition.
+</Note>
+
+## Customer Invoicing
+
+Generate and manage customer invoices.
+
+### Invoice Generation
+
+Create invoices from orders or shipments:
+
+<Steps>
+  <Step title="Navigate to Invoice">
+    Go to **Invoice (Customer)** and create new invoice
+  </Step>
+  <Step title="Select Customer">
+    Choose customer and billing details
+  </Step>
+  <Step title="Create from Shipment">
+    Use **Create From** > **Shipment** to invoice shipped goods
+  </Step>
+  <Step title="Verify Amounts">
+    Confirm quantities, pricing, and extended amounts
+  </Step>
+  <Step title="Add Charges">
+    Include freight, handling, or other charges
+  </Step>
+  <Step title="Complete Invoice">
+    Completing posts revenue and creates receivable
+  </Step>
+</Steps>
+
+### Invoice Types
+
+- **AR Invoice** - Standard customer billing
+- **AR Credit Memo** - Credit for returns or adjustments
+- **Prepayment Invoice** - Invoice before shipment
+- **Recurring Invoice** - Automated subscription billing
+- **Adjustment Invoice** - Corrections or price adjustments
+
+### Invoice Features
+
+- **Multiple Shipments** - Consolidate multiple shipments on one invoice
+- **Partial Invoicing** - Invoice portion of order with remainder later
+- **Payment Schedule** - Split payments over multiple dates
+- **Dunning** - Automated collection reminders for overdue invoices
+- **Invoice Templates** - Custom invoice layouts and formats
+
+### Payment Collection
+
+Record customer payments:
+
+<Steps>
+  <Step title="Create Payment">
+    Navigate to **Payment** and create new payment record
+  </Step>
+  <Step title="Enter Payment Details">
+    Specify customer, amount, payment method, and bank account
+  </Step>
+  <Step title="Allocate to Invoices">
+    Use **Allocate Payment** to distribute across open invoices
+  </Step>
+  <Step title="Apply Discounts">
+    Automatically apply payment discounts if within terms
+  </Step>
+  <Step title="Complete Payment">
+    Completing posts cash receipt and updates invoice balances
+  </Step>
+</Steps>
+
+<Tip>
+Enable automatic payment reminders for invoices approaching due dates. Configure dunning levels for progressively firmer collection messages.
+</Tip>
+
+## Returns Management (RMA)
+
+Handle customer returns and exchanges.
+
+### Return Process
+
+<Steps>
+  <Step title="Create RMA">
+    Create a return authorization documenting return reason and approval
+  </Step>
+  <Step title="Issue Return Number">
+    Provide RMA number to customer for shipment tracking
+  </Step>
+  <Step title="Receive Return">
+    Create customer return shipment when goods arrive
+  </Step>
+  <Step title="Quality Inspection">
+    Inspect returned items for restocking, repair, or scrap
+  </Step>
+  <Step title="Process Credit">
+    Issue credit memo to customer for approved returns
+  </Step>
+  <Step title="Restock or Dispose">
+    Return acceptable items to inventory or dispose of damaged goods
+  </Step>
+</Steps>
+
+### Return Scenarios
+
+- **Defective Products** - Quality issues or damage
+- **Wrong Items** - Shipped incorrect products
+- **Buyer's Remorse** - Customer cancellation
+- **Warranty Returns** - Repair or replacement under warranty
+- **Exchanges** - Return one product and order another
+
+### Restocking Fees
+
+Apply charges for non-defective returns:
+
+- **Percentage Fee** - Percentage of original price
+- **Flat Fee** - Fixed restocking charge
+- **No Fee** - Waive for defective or company errors
+- **Tiered Fees** - Variable by reason or time since sale
+
+## Sales Analytics
+
+Analyze sales performance and trends.
+
+### Key Metrics
+
+<CardGroup cols={2}>
+  <Card title="Sales by Period" icon="chart-line">
+    Revenue trends by day, week, month, quarter, or year
+  </Card>
+  <Card title="Sales by Product" icon="box">
+    Top-selling products and category analysis
+  </Card>
+  <Card title="Sales by Customer" icon="users">
+    Customer ranking and concentration analysis
+  </Card>
+  <Card title="Sales by Salesperson" icon="user-tie">
+    Individual and team performance metrics
+  </Card>
+</CardGroup>
+
+### Performance Analysis
+
+- **Order Backlog** - Outstanding orders not yet shipped
+- **On-Time Delivery** - Percentage shipped by promised date
+- **Order Cycle Time** - Average days from order to shipment
+- **Fill Rate** - Percentage of orders shipped complete
+- **Quote Win Rate** - Quotes converted to orders
+- **Average Order Value** - Mean order size by customer or period
+
+### Sales Forecasting
+
+Project future sales:
+
+- **Historical Trends** - Analyze past sales patterns
+- **Seasonality Analysis** - Identify seasonal demand variations
+- **Pipeline Value** - Weighted opportunity value
+- **Growth Rates** - Calculate period-over-period growth
+- **Customer Trends** - Individual customer purchasing patterns
+
+## Point of Sale (POS)
+
+Process in-person sales and cash transactions.
+
+### POS Features
+
+- **Quick Product Search** - Fast lookup by code or description
+- **Cash Register** - Cash drawer integration and management
+- **Multiple Payment Types** - Cash, card, check, or mixed
+- **Receipt Printing** - Customer receipt generation
+- **End of Day** - Cash reconciliation and deposit preparation
+
+### POS Order Processing
+
+<Steps>
+  <Step title="Open POS Terminal">
+    Start POS session and verify opening cash amount
+  </Step>
+  <Step title="Scan Products">
+    Scan or enter products for sale
+  </Step>
+  <Step title="Apply Discounts">
+    Add promotional or manual discounts
+  </Step>
+  <Step title="Collect Payment">
+    Accept payment and provide change
+  </Step>
+  <Step title="Print Receipt">
+    Provide customer receipt
+  </Step>
+  <Step title="Close Terminal">
+    Reconcile cash and close POS session at day end
+  </Step>
+</Steps>
+
+<Note>
+POS orders are immediately completed, shipped, and invoiced in a single transaction. This creates instant revenue recognition and inventory reduction.
+</Note>
+
+## Order Automation
+
+Automate repetitive sales processes.
+
+### Recurring Orders
+
+Automate subscription and regular orders:
+
+- **Frequency** - Daily, weekly, monthly, or custom schedules
+- **Start/End Dates** - Control subscription duration
+- **Automatic Processing** - Generate and process orders automatically
+- **Quantity Adjustment** - Allow customer modifications
+- **Auto-Renewal** - Extend subscriptions automatically
+
+### Standing Orders
+
+Maintain ongoing customer commitments:
+
+- **Blanket Orders** - Master order with periodic releases
+- **Call-Off Schedules** - Planned delivery schedules
+- **Contract Fulfillment** - Execute against customer contracts
+- **JIT Delivery** - Just-in-time shipment coordination
+
+## Sales Commission
+
+Calculate and manage sales commissions.
+
+### Commission Configuration
+
+- **Commission Rates** - Percentage or fixed amount per sale
+- **Tiered Rates** - Increasing rates for higher volumes
+- **Product-Specific** - Different rates by product or category
+- **Split Commissions** - Divide among multiple salespeople
+- **Override Rules** - Adjust rates for special situations
+
+### Commission Processing
+
+<Steps>
+  <Step title="Define Commission Rules">
+    Set up commission rates and calculation methods
+  </Step>
+  <Step title="Assign Salespeople">
+    Link sales representatives to customers or orders
+  </Step>
+  <Step title="Calculate Commissions">
+    Run commission calculation process for period
+  </Step>
+  <Step title="Review and Adjust">
+    Verify calculations and make manual adjustments
+  </Step>
+  <Step title="Generate Payments">
+    Create commission payment records
+  </Step>
+</Steps>
+
+## Best Practices
+
+### Order Management
+
+- Implement quote templates for standard configurations
+- Require credit checking before order completion
+- Use order reservations to prevent over-commitment
+- Configure approval workflows for large or discounted orders
+- Monitor order aging to identify delayed shipments
+
+### Pricing Control
+
+- Maintain current price lists by customer segment
+- Require approval for discounts exceeding thresholds
+- Use discount schemas for consistent volume pricing
+- Review pricing regularly against costs and competition
+- Document price override reasons for audit trail
+
+### Fulfillment Efficiency
+
+- Process orders in batches by ship date or region
+- Use warehouse locations strategically for fast movers
+- Implement barcode scanning to reduce pick errors
+- Ship partial orders rather than holding entire orders
+- Integrate with carrier systems for automated shipping
+
+### Customer Service
+
+- Provide accurate promised dates based on inventory
+- Communicate proactively about back orders or delays
+- Process returns quickly to maintain customer satisfaction
+- Use dunning processes consistently for collections
+- Monitor metrics like on-time delivery and fill rates
+
+## Related Modules
+
+<CardGroup cols={2}>
+  <Card title="CRM" icon="handshake" href="/modules/crm">
+    Manage customer relationships and opportunities
+  </Card>
+  <Card title="Inventory" icon="warehouse" href="/modules/inventory">
+    Track stock levels and fulfill orders
+  </Card>
+  <Card title="Accounting" icon="calculator" href="/modules/accounting">
+    Record revenue and manage receivables
+  </Card>
+  <Card title="Manufacturing" icon="industry" href="/modules/manufacturing">
+    Produce made-to-order products
+  </Card>
+</CardGroup>

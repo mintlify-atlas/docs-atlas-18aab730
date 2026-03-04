@@ -1,0 +1,256 @@
+---
+title: 'Contributing Guide'
+description: 'Learn how to contribute code to iDempiere'
+---
+
+First off, thanks for taking the time to contribute! This guide will help you understand the contribution workflow and best practices.
+
+## Before You Start
+
+Before contributing, make sure that you:
+
+1. Read our [Code of Conduct](https://github.com/idempiere/idempiere/blob/master/CODE_OF_CONDUCT.md)
+2. Review the [Contributing to iDempiere's core](https://wiki.idempiere.org/en/Contributing_to_Trunk) guide for coding conventions and guidelines
+3. Join our [Mattermost](https://mattermost.idempiere.org/) to discuss your contribution
+
+## Reporting Bugs
+
+### Before Submitting a Bug Report
+
+<Steps>
+  <Step title="Check the latest version">
+    Verify you can reproduce the problem in the latest version of iDempiere.
+  </Step>
+  <Step title="Search existing issues">
+    Check if the bug was already reported by searching [JIRA Issues](https://idempiere.atlassian.net/issues/).
+    
+    <Note>
+      If you find a **Closed** issue that seems like the same thing you're experiencing, open a new issue and include a link to the original issue.
+    </Note>
+  </Step>
+  <Step title="Check the FAQs">
+    Review the [FAQs on the forum](https://www.idempiere.org/forums) for common questions and problems.
+  </Step>
+  <Step title="Test on test sites">
+    Try to reproduce the bug on one of the [test servers](https://www.idempiere.org/test-sites) before creating a ticket.
+  </Step>
+</Steps>
+
+### How to Submit a Bug Report
+
+Bugs are tracked as [JIRA issues](https://idempiere.atlassian.net/issues/). Create a new issue and include:
+
+<AccordionGroup>
+  <Accordion title="Title and Description">
+    - Use a clear and descriptive title that identifies the problem
+    - Describe the exact steps to reproduce the problem in as many details as possible
+    - Provide specific examples to demonstrate the steps
+  </Accordion>
+  
+  <Accordion title="Expected vs Actual Behavior">
+    - Describe the behavior you observed after following the steps
+    - Explain which behavior you expected to see instead and why
+    - Point out what exactly is the problem with the observed behavior
+  </Accordion>
+  
+  <Accordion title="Supporting Evidence">
+    - Include screenshots and videos if possible
+    - If iDempiere crashed, include a crash report with stack trace from log files
+    - If related to performance or memory, include valid numbers
+    - Reproduce with Garden data when possible
+  </Accordion>
+  
+  <Accordion title="Context Information">
+    - Can you reproduce on [test sites](https://www.idempiere.org/test-sites)?
+    - Did the problem start recently after an update?
+    - Which version(s) are affected?
+    - Can you reliably reproduce the issue?
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  **Security Vulnerabilities**: Do not open JIRA tickets for security vulnerabilities. Instead, refer to our [security policy](https://wiki.idempiere.org/en/How_to_report_a_vulnerability).
+</Warning>
+
+## Suggesting Enhancements
+
+### Before Submitting an Enhancement
+
+<Steps>
+  <Step title="Discuss in the forum">
+    Suggest your change in the [public forum](https://www.idempiere.org/forums). Do not open an issue on JIRA until you have collected positive feedback about the change.
+    
+    <Info>
+      JIRA issues are primarily intended for bug reports and fixes.
+    </Info>
+  </Step>
+  <Step title="Search for existing suggestions">
+    Check if there's already [a ticket](https://idempiere.atlassian.net/browse/IDEMPIERE-3978?jql=issuetype%20in%20(Improvement%2C%20%22New%20Feature%22)) that provides or suggests that enhancement.
+  </Step>
+  <Step title="Consider plugin approach">
+    Determine if the enhancement should be in core or implemented as a [community plugin](https://wiki.idempiere.org/en/Category:Available_Plugins).
+  </Step>
+</Steps>
+
+### How to Submit an Enhancement Suggestion
+
+Enhancement suggestions are tracked as [JIRA issues](https://idempiere.atlassian.net/issues/). Include:
+
+- A clear and descriptive title
+- Step-by-step description of the suggested enhancement in as many details as possible
+- Specific examples to demonstrate the steps
+- Current behavior vs expected behavior
+- Explanation of why this enhancement would be useful to most iDempiere users
+
+## Contributing Code
+
+iDempiere uses a **forking workflow** for code contributions. Read the detailed [Fork and Branch Git Workflow](https://wiki.idempiere.org/en/Fork_and_Branch_Git_Workflow) guide for more information.
+
+### Contribution Workflow
+
+<Steps>
+  <Step title="Create your personal fork">
+    Fork the [iDempiere repository](https://github.com/idempiere/idempiere) on GitHub to your personal account.
+  </Step>
+  
+  <Step title="Clone your fork">
+    Clone your fork to your local machine:
+    
+    ```bash
+    git clone https://github.com/YOUR-USERNAME/idempiere.git
+    cd idempiere
+    ```
+  </Step>
+  
+  <Step title="Add upstream remote">
+    Add the upstream repository to keep your fork synchronized:
+    
+    ```bash
+    git remote add upstream https://github.com/idempiere/idempiere.git
+    ```
+  </Step>
+  
+  <Step title="Synchronize with upstream">
+    Before creating a new branch, sync your local repository with upstream:
+    
+    ```bash
+    git fetch upstream
+    git checkout master
+    git merge upstream/master
+    ```
+  </Step>
+  
+  <Step title="Create a feature branch">
+    Create a new branch for your work. Use a descriptive name:
+    
+    ```bash
+    git checkout -b IDEMPIERE-####-descriptive-name
+    ```
+    
+    Replace `####` with your JIRA ticket number.
+  </Step>
+  
+  <Step title="Make your changes">
+    Implement your changes following the [code standards](/community/code-standards).
+    
+    <Warning>
+      Always follow iDempiere's coding conventions and guidelines.
+    </Warning>
+  </Step>
+  
+  <Step title="Test thoroughly">
+    Test your changes thoroughly. See the [Testing Guide](/community/testing) for details.
+    
+    - Write unit tests when appropriate
+    - Test with Garden World data
+    - Verify no regressions
+  </Step>
+  
+  <Step title="Commit your changes">
+    Create a commit using the iDempiere standard message format:
+    
+    ```bash
+    git add .
+    git commit -m "IDEMPIERE-[####] [Ticket Description]"
+    ```
+    
+    <Info>
+      **Commit Message Format**: `IDEMPIERE-[####] [Ticket Description]`
+      
+      Example: `IDEMPIERE-1234 Fix tax calculation for EU countries`
+    </Info>
+  </Step>
+  
+  <Step title="Push to your fork">
+    Push your commit to your fork:
+    
+    ```bash
+    git push origin IDEMPIERE-####-descriptive-name
+    ```
+  </Step>
+  
+  <Step title="Create a Pull Request">
+    Navigate to GitHub in your web browser and create a Pull Request:
+    
+    1. Go to your fork on GitHub
+    2. Click "Compare & pull request" button
+    3. Provide a clear description of your changes
+    4. Reference the JIRA ticket number
+    5. Submit the pull request
+  </Step>
+  
+  <Step title="Document new features">
+    If the change is big and adds new functionality, document the modifications and new features and add this documentation to [the new features wiki](https://wiki.idempiere.org/en/Category:New_Features).
+  </Step>
+</Steps>
+
+### Pull Request Guidelines
+
+- Keep pull requests focused on a single issue or feature
+- Include the JIRA ticket number in the PR title and description
+- Provide a clear description of what the PR does
+- Include screenshots or videos for UI changes
+- Ensure all tests pass
+- Respond to review comments promptly
+
+## Contributing Plugins
+
+If you wrote a plugin that is valuable for the community:
+
+1. Read our [Plugin Guidelines](https://wiki.idempiere.org/en/Plugin_Guidelines)
+2. Add your plugin to the [available plugins site](https://wiki.idempiere.org/en/Category:Available_Plugins)
+
+<Note>
+  If the community or its leaders find that your plugin does not follow the guidelines, is disrupting, or needs further support from a specific implementing company to use it, the project leaders are entitled to remove the plugin from the Available plugins list.
+</Note>
+
+## Contributing to Documentation
+
+We welcome contributions to improve iDempiere documentation. Contact the team to learn more about contributing to documentation.
+
+## Getting Help
+
+### Questions About Source Code
+
+Ask any question about how to use iDempiere in the [public forum](https://www.idempiere.org/forums).
+
+### Questions About Contributing
+
+Join our [Mattermost Support Channel](https://mattermost.idempiere.org/idempiere/channels/support) to ask questions about contributing.
+
+## Recognition
+
+iDempiere is a volunteer effort, and we appreciate every contribution. Contributors are recognized on the [GitHub contributors page](https://github.com/idempiere/idempiere/graphs/contributors).
+
+Thanks for contributing to iDempiere!
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Code Standards" icon="file-code" href="/community/code-standards">
+    Review coding conventions and best practices
+  </Card>
+  <Card title="Testing Guide" icon="vial" href="/community/testing">
+    Learn about writing and running tests
+  </Card>
+</CardGroup>

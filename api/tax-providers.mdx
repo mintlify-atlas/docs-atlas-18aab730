@@ -1,0 +1,613 @@
+---
+title: "Tax Providers"
+description: "Integrate external tax calculation services with iDempiere through the ITaxProvider extension point"
+---
+
+## Overview
+
+The Tax Provider extension point enables integration with external tax calculation services like Avalara, TaxJar, or custom tax engines. It allows automatic tax calculation for orders, invoices, and RMAs.
+
+## Extension Point
+
+**Extension Point ID**: `org.adempiere.model.ITaxProvider`
+
+**Interface**: `org.adempiere.model.ITaxProvider`
+
+**Schema Location**: `org.adempiere.base/schema/org.adempiere.model.ITaxProvider.exsd`
+
+## ITaxProvider Interface
+
+From `org.adempiere.model.ITaxProvider`:
+
+```java
+package org.adempiere.model;
+
+import org.compiere.model.MInvoice;
+import org.compiere.model.MInvoiceLine;
+import org.compiere.model.MOrder;
+import org.compiere.model.MOrderLine;
+import org.compiere.model.MRMA;
+import org.compiere.model.MRMALine;
+import org.compiere.model.MTaxProvider;
+import org.compiere.process.ProcessInfo;
+
+/**
+ * Tax calculation interface
+ * @author Elaine Tan
+ */
+public interface ITaxProvider {
+    
+    // ==================== Order Tax Methods ====================
+    
+    /**
+     * Calculate order tax total
+     * @param provider Tax provider configuration
+     * @param order Order document
+     * @return true if success, false otherwise
+     */
+    public boolean calculateOrderTaxTotal(MTaxProvider provider, MOrder order);
+    
+    /**
+     * Update order tax for line
+     * @param provider Tax provider configuration
+     * @param line Order line
+     * @return true if success, false otherwise
+     */
+    public boolean updateOrderTax(MTaxProvider provider, MOrderLine line);
+    
+    /**
+     * Re-calculate order tax for line (if line tax id changes)
+     * @param provider Tax provider configuration
+     * @param line Order line
+     * @param newRecord True if this is a new record
+     * @return true if success, false otherwise
+     */
+    public boolean recalculateTax(MTaxProvider provider, MOrderLine line, 
+                                   boolean newRecord);
+    
+    /**
+     * Update order tax total in header
+     * @param provider Tax provider configuration
+     * @param line Order line that changed
+     * @return true if success, false otherwise
+     */
+    public boolean updateHeaderTax(MTaxProvider provider, MOrderLine line);
+    
+    // ==================== Invoice Tax Methods ====================
+    
+    /**
+     * Calculate invoice tax total
+     * @param provider Tax provider configuration
+     * @param invoice Invoice document
+     * @return true if success, false otherwise
+     */
+    public boolean calculateInvoiceTaxTotal(MTaxProvider provider, MInvoice invoice);
+    
+    /**
+     * Update invoice tax for line
+     * @param provider Tax provider configuration
+     * @param line Invoice line
+     * @return true if success, false otherwise
+     */
+    public boolean updateInvoiceTax(MTaxProvider provider, MInvoiceLine line);
+    
+    /**
+     * Re-calculate invoice tax for line (if line tax id changes)
+     * @param provider Tax provider configuration
+     * @param line Invoice line
+     * @param newRecord True if this is a new record
+     * @return true if success, false otherwise
+     */
+    public boolean recalculateTax(MTaxProvider provider, MInvoiceLine line, 
+                                   boolean newRecord);
+    
+    /**
+     * Update invoice tax total in header
+     * @param provider Tax provider configuration
+     * @param line Invoice line that changed
+     * @return true if success, false otherwise
+     */
+    public boolean updateHeaderTax(MTaxProvider provider, MInvoiceLine line);
+    
+    // ==================== RMA Tax Methods ====================
+    
+    /**
+     * Calculate RMA tax total
+     * @param provider Tax provider configuration
+     * @param rma RMA document
+     * @return true if success, false otherwise
+     */
+    public boolean calculateRMATaxTotal(MTaxProvider provider, MRMA rma);
+    
+    /**
+     * Update RMA tax for line
+     * @param provider Tax provider configuration
+     * @param line RMA line
+     * @return true if success, false otherwise
+     */
+    public boolean updateRMATax(MTaxProvider provider, MRMALine line);
+    
+    /**
+     * Re-calculate RMA tax for line (if line tax id changes)
+     * @param provider Tax provider configuration
+     * @param line RMA line
+     * @param newRecord True if this is a new record
+     * @return true if success, false otherwise
+     */
+    public boolean recalculateTax(MTaxProvider provider, MRMALine line, 
+                                   boolean newRecord);
+    
+    /**
+     * Update RMA tax total in header
+     * @param provider Tax provider configuration
+     * @param line RMA line that changed
+     * @return true if success, false otherwise
+     */
+    public boolean updateHeaderTax(MTaxProvider provider, MRMALine line);
+    
+    // ==================== Validation Methods ====================
+    
+    /**
+     * Validate connection to online tax calculation service
+     * @param provider Tax provider configuration
+     * @param pi Process info for feedback
+     * @return error message or null if successful
+     * @throws Exception
+     */
+    public String validateConnection(MTaxProvider provider, ProcessInfo pi) 
+        throws Exception;
+}
+```
+
+## Extension Point Definition
+
+From `org.adempiere.base/schema/org.adempiere.model.ITaxProvider.exsd`:
+
+```xml
+<?xml version='1.0' encoding='UTF-8'?>
+<schema targetNamespace="org.adempiere.base" 
+        xmlns="http://www.w3.org/2001/XMLSchema">
+    <annotation>
+        <appinfo>
+            <meta.schema plugin="org.adempiere.base" 
+                         id="org.adempiere.model.ITaxProvider" 
+                         name="Tax Provider"/>
+        </appinfo>
+        <documentation>
+            Extension to provide tax integration through specific 
+            tax provider implementation
+        </documentation>
+    </annotation>
+    
+    <element name="provider">
+        <complexType>
+            <attribute name="priority" type="string">
+                <annotation>
+                    <documentation>
+                        numeric priority value, higher value is of higher priority
+                    </documentation>
+                </annotation>
+            </attribute>
+            <attribute name="class" type="string" use="required">
+                <annotation>
+                    <appinfo>
+                        <meta.attribute kind="java" 
+                            basedOn=":org.adempiere.model.ITaxProvider"/>
+                    </appinfo>
+                </annotation>
+            </attribute>
+        </complexType>
+    </element>
+</schema>
+```
+
+## Standard Tax Provider
+
+iDempiere includes a standard tax provider for built-in tax calculation.
+
+From `org.adempiere.base/plugin.xml`:
+
+```xml
+<extension
+    id="org.compiere.model.StandardTaxProvider"
+    name="Standard Tax Provider"
+    point="org.adempiere.model.ITaxProvider">
+    <provider
+        class="org.compiere.model.StandardTaxProvider"
+        priority="0">
+    </provider>
+</extension>
+```
+
+Configuration in database:
+
+```sql
+C_TaxProvider.TaxProviderClass="org.compiere.model.StandardTaxProvider"
+```
+
+## Implementation Example: Avalara Integration
+
+```java
+package com.example.tax;
+
+import org.adempiere.model.ITaxProvider;
+import org.compiere.model.*;
+import org.compiere.process.ProcessInfo;
+import org.compiere.util.CLogger;
+import java.math.BigDecimal;
+import java.util.Properties;
+
+public class AvaларaTaxProvider implements ITaxProvider {
+    
+    private static final CLogger log = 
+        CLogger.getCLogger(AvaларaTaxProvider.class);
+    
+    // Avalara API endpoints
+    private static final String AVALARA_URL = 
+        "https://rest.avatax.com/api/v2";
+    
+    @Override
+    public boolean calculateOrderTaxTotal(MTaxProvider provider, MOrder order) {
+        try {
+            // Get Avalara credentials from provider
+            String accountId = provider.getAccountID();
+            String licenseKey = provider.getLicenseKey();
+            
+            // Build tax request
+            Properties request = new Properties();
+            request.setProperty("type", "SalesOrder");
+            request.setProperty("companyCode", 
+                getCompanyCode(order.getAD_Client_ID()));
+            request.setProperty("date", 
+                order.getDateOrdered().toString());
+            request.setProperty("customerCode", 
+                String.valueOf(order.getC_BPartner_ID()));
+            
+            // Add addresses
+            MLocation shipLoc = order.getShipLocation();
+            if (shipLoc != null) {
+                request.setProperty("addresses.shipTo.line1", 
+                    shipLoc.getAddress1());
+                request.setProperty("addresses.shipTo.city", 
+                    shipLoc.getCity());
+                request.setProperty("addresses.shipTo.region", 
+                    shipLoc.getRegionName());
+                request.setProperty("addresses.shipTo.postalCode", 
+                    shipLoc.getPostal());
+                request.setProperty("addresses.shipTo.country", 
+                    shipLoc.getCountry().getCountryCode());
+            }
+            
+            // Add line items
+            MOrderLine[] lines = order.getLines();
+            for (int i = 0; i < lines.length; i++) {
+                MOrderLine line = lines[i];
+                String prefix = "lines[" + i + "].";
+                request.setProperty(prefix + "number", 
+                    String.valueOf(line.getLine()));
+                request.setProperty(prefix + "quantity", 
+                    line.getQtyOrdered().toString());
+                request.setProperty(prefix + "amount", 
+                    line.getLineNetAmt().toString());
+                request.setProperty(prefix + "taxCode", 
+                    getTaxCode(line));
+                request.setProperty(prefix + "itemCode", 
+                    line.getProduct().getValue());
+                request.setProperty(prefix + "description", 
+                    line.getProduct().getName());
+            }
+            
+            // Call Avalara API
+            Properties response = callAvalaraAPI(
+                AVALARA_URL + "/transactions/create",
+                accountId, licenseKey, request);
+            
+            if (response == null) {
+                log.severe("Failed to get response from Avalara");
+                return false;
+            }
+            
+            // Parse response and update order
+            BigDecimal totalTax = new BigDecimal(
+                response.getProperty("totalTax", "0"));
+            BigDecimal totalAmount = new BigDecimal(
+                response.getProperty("totalAmount", "0"));
+            
+            // Update order totals
+            order.setTotalLines(order.getTotalLines());
+            order.setGrandTotal(totalAmount);
+            
+            // Save transaction reference
+            String transactionId = response.getProperty("code");
+            order.set_ValueOfColumn("AvalaraTransactionID", transactionId);
+            
+            return true;
+            
+        } catch (Exception e) {
+            log.log(java.util.logging.Level.SEVERE, 
+                "Error calculating tax", e);
+            return false;
+        }
+    }
+    
+    @Override
+    public boolean updateOrderTax(MTaxProvider provider, MOrderLine line) {
+        // For Avalara, recalculate entire order
+        return calculateOrderTaxTotal(provider, line.getParent());
+    }
+    
+    @Override
+    public boolean recalculateTax(MTaxProvider provider, MOrderLine line, 
+                                   boolean newRecord) {
+        if (!newRecord && line.is_ValueChanged("C_Tax_ID")) {
+            return calculateOrderTaxTotal(provider, line.getParent());
+        }
+        return true;
+    }
+    
+    @Override
+    public boolean updateHeaderTax(MTaxProvider provider, MOrderLine line) {
+        return calculateOrderTaxTotal(provider, line.getParent());
+    }
+    
+    @Override
+    public boolean calculateInvoiceTaxTotal(MTaxProvider provider, 
+                                             MInvoice invoice) {
+        // Similar to order calculation
+        try {
+            String accountId = provider.getAccountID();
+            String licenseKey = provider.getLicenseKey();
+            
+            Properties request = new Properties();
+            request.setProperty("type", "SalesInvoice");
+            request.setProperty("companyCode", 
+                getCompanyCode(invoice.getAD_Client_ID()));
+            request.setProperty("date", 
+                invoice.getDateInvoiced().toString());
+            request.setProperty("customerCode", 
+                String.valueOf(invoice.getC_BPartner_ID()));
+            
+            // Add addresses and lines...
+            MInvoiceLine[] lines = invoice.getLines(false);
+            for (int i = 0; i < lines.length; i++) {
+                MInvoiceLine line = lines[i];
+                String prefix = "lines[" + i + "].";
+                request.setProperty(prefix + "number", 
+                    String.valueOf(line.getLine()));
+                request.setProperty(prefix + "quantity", 
+                    line.getQtyInvoiced().toString());
+                request.setProperty(prefix + "amount", 
+                    line.getLineNetAmt().toString());
+            }
+            
+            Properties response = callAvalaraAPI(
+                AVALARA_URL + "/transactions/create",
+                accountId, licenseKey, request);
+            
+            if (response != null) {
+                BigDecimal totalAmount = new BigDecimal(
+                    response.getProperty("totalAmount", "0"));
+                invoice.setGrandTotal(totalAmount);
+                return true;
+            }
+            return false;
+            
+        } catch (Exception e) {
+            log.log(java.util.logging.Level.SEVERE, 
+                "Error calculating invoice tax", e);
+            return false;
+        }
+    }
+    
+    @Override
+    public boolean updateInvoiceTax(MTaxProvider provider, MInvoiceLine line) {
+        return calculateInvoiceTaxTotal(provider, line.getParent());
+    }
+    
+    @Override
+    public boolean recalculateTax(MTaxProvider provider, MInvoiceLine line, 
+                                   boolean newRecord) {
+        if (!newRecord && line.is_ValueChanged("C_Tax_ID")) {
+            return calculateInvoiceTaxTotal(provider, line.getParent());
+        }
+        return true;
+    }
+    
+    @Override
+    public boolean updateHeaderTax(MTaxProvider provider, MInvoiceLine line) {
+        return calculateInvoiceTaxTotal(provider, line.getParent());
+    }
+    
+    @Override
+    public boolean calculateRMATaxTotal(MTaxProvider provider, MRMA rma) {
+        // Similar to order/invoice calculation for returns
+        return true;
+    }
+    
+    @Override
+    public boolean updateRMATax(MTaxProvider provider, MRMALine line) {
+        return calculateRMATaxTotal(provider, line.getParent());
+    }
+    
+    @Override
+    public boolean recalculateTax(MTaxProvider provider, MRMALine line, 
+                                   boolean newRecord) {
+        if (!newRecord && line.is_ValueChanged("C_Tax_ID")) {
+            return calculateRMATaxTotal(provider, line.getParent());
+        }
+        return true;
+    }
+    
+    @Override
+    public boolean updateHeaderTax(MTaxProvider provider, MRMALine line) {
+        return calculateRMATaxTotal(provider, line.getParent());
+    }
+    
+    @Override
+    public String validateConnection(MTaxProvider provider, ProcessInfo pi) 
+        throws Exception {
+        try {
+            String accountId = provider.getAccountID();
+            String licenseKey = provider.getLicenseKey();
+            
+            // Ping Avalara API
+            Properties response = callAvalaraAPI(
+                AVALARA_URL + "/utilities/ping",
+                accountId, licenseKey, new Properties());
+            
+            if (response != null && 
+                "true".equals(response.getProperty("authenticated"))) {
+                return null; // Success
+            }
+            return "Authentication failed";
+            
+        } catch (Exception e) {
+            return "Connection error: " + e.getMessage();
+        }
+    }
+    
+    /**
+     * Helper method to call Avalara API
+     */
+    private Properties callAvalaraAPI(String url, String accountId, 
+                                       String licenseKey, Properties request) {
+        // Implementation using HTTP client
+        // Add Authorization header with Base64 encoded credentials
+        // Send JSON request, parse JSON response
+        return new Properties(); // Simplified
+    }
+    
+    /**
+     * Get company code for client
+     */
+    private String getCompanyCode(int clientId) {
+        // Look up company code from configuration
+        return "DEFAULT";
+    }
+    
+    /**
+     * Get tax code for product
+     */
+    private String getTaxCode(MOrderLine line) {
+        MProduct product = line.getProduct();
+        if (product != null) {
+            String taxCode = (String) product.get_Value("TaxCode");
+            if (taxCode != null && taxCode.length() > 0)
+                return taxCode;
+        }
+        return "P0000000"; // Default taxable
+    }
+}
+```
+
+## Registering a Tax Provider
+
+### Plugin XML Declaration
+
+```xml
+<extension
+    id="com.example.tax.AvaларaTaxProvider"
+    name="Avalara Tax Provider"
+    point="org.adempiere.model.ITaxProvider">
+    <provider
+        class="com.example.tax.AvaларaTaxProvider"
+        priority="10">
+    </provider>
+</extension>
+```
+
+### Database Configuration
+
+In the **C_TaxProvider** table:
+
+```sql
+INSERT INTO C_TaxProvider (
+    C_TaxProvider_ID,
+    Name,
+    TaxProviderClass,
+    AccountID,
+    LicenseKey,
+    ...
+) VALUES (
+    1000000,
+    'Avalara AvaTax',
+    'com.example.tax.AvaларaTaxProvider',
+    'your-account-id',
+    'your-license-key',
+    ...
+);
+```
+
+## Tax Calculation Flow
+
+1. **Line Change**: User adds/modifies order/invoice line
+2. **Line Tax Update**: System calls `updateOrderTax()` or `updateInvoiceTax()`
+3. **Tax Calculation**: Provider calculates tax for the line
+4. **Header Update**: System calls `updateHeaderTax()` to update totals
+5. **Document Total**: System calls `calculateOrderTaxTotal()` or `calculateInvoiceTaxTotal()`
+
+## MTaxProvider Model
+
+The provider parameter gives access to configuration:
+
+```java
+public class MTaxProvider extends X_C_TaxProvider {
+    // Configuration fields
+    public String getAccountID();
+    public String getLicenseKey();
+    public String getURL();
+    public boolean isTest();
+    
+    // Tax provider class
+    public String getTaxProviderClass();
+}
+```
+
+## Best Practices
+
+1. **Caching**: Cache tax rates to reduce API calls
+2. **Error Handling**: Provide fallback to standard calculation on errors
+3. **Performance**: Batch API calls when possible
+4. **Testing**: Support sandbox/test modes
+5. **Logging**: Log API requests/responses for debugging
+6. **Transaction IDs**: Store external transaction references
+7. **Validation**: Validate address data before sending to API
+8. **Exemptions**: Handle tax-exempt customers properly
+
+## Testing
+
+```java
+public class AvaларaTaxProviderTest {
+    
+    @Test
+    public void testOrderTaxCalculation() {
+        AvaларaTaxProvider provider = new AvaларaTaxProvider();
+        MTaxProvider config = createTestConfig();
+        MOrder order = createTestOrder();
+        
+        boolean success = provider.calculateOrderTaxTotal(config, order);
+        
+        assertTrue("Tax calculation should succeed", success);
+        assertTrue("Grand total should include tax", 
+            order.getGrandTotal().compareTo(order.getTotalLines()) > 0);
+    }
+    
+    @Test
+    public void testConnectionValidation() throws Exception {
+        AvaларaTaxProvider provider = new AvaларaTaxProvider();
+        MTaxProvider config = createTestConfig();
+        ProcessInfo pi = new ProcessInfo("Test", 0);
+        
+        String error = provider.validateConnection(config, pi);
+        
+        assertNull("Validation should succeed", error);
+    }
+}
+```
+
+## Related Topics
+
+- [Plugin Extensions](/api/plugin-extensions): Extension point framework
+- [Payment Processors](/api/payment-processors): Payment gateway integration
+- [Shipment Processors](/api/shipment-processors): Shipping integration
+- [Model Validators](../development/model-validators): Database event handling

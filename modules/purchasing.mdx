@@ -1,0 +1,508 @@
+---
+title: "Purchasing Module"
+description: "Procurement, vendor management, and purchase order processing in iDempiere"
+---
+
+The Purchasing module in iDempiere provides complete procurement capabilities, from requisition through purchase order, receipt, and vendor payment.
+
+## Overview
+
+iDempiere's purchasing system streamlines the procurement process with automated workflows, approval hierarchies, and tight integration with inventory and accounting. The module supports complex purchasing scenarios including drop shipments, contract pricing, and multi-currency transactions.
+
+<CardGroup cols={2}>
+  <Card title="Purchase Requisitions" icon="file-lines" href="#purchase-requisitions">
+    Internal requests for materials and services
+  </Card>
+  <Card title="Purchase Orders" icon="file-contract" href="#purchase-orders">
+    Vendor orders with approval workflows
+  </Card>
+  <Card title="Receipts & Returns" icon="dolly" href="#material-receipts">
+    Receive goods and handle vendor returns
+  </Card>
+  <Card title="Vendor Invoices" icon="file-invoice-dollar" href="#vendor-invoices">
+    Match and process vendor bills
+  </Card>
+</CardGroup>
+
+## Purchase Requisitions
+
+Initiate the purchasing process with internal requests for materials or services.
+
+### Requisition Process
+
+Requisitions allow departments to request purchases without direct vendor interaction:
+
+<Steps>
+  <Step title="Create Requisition">
+    Navigate to **Requisition** > **Requisition** and click **New**
+  </Step>
+  <Step title="Add Line Items">
+    Enter products or services needed with quantities and required dates
+  </Step>
+  <Step title="Specify Requirements">
+    Add descriptions, preferred vendors, and any special requirements
+  </Step>
+  <Step title="Submit for Approval">
+    Complete the requisition to route through approval workflow
+  </Step>
+  <Step title="Purchasing Review">
+    Procurement team reviews approved requisitions and creates purchase orders
+  </Step>
+</Steps>
+
+### Requisition Types
+
+- **Material Requisition** - Request for inventory items
+- **Service Requisition** - Request for services or labor
+- **Expense Requisition** - Request for expense items or supplies
+- **Asset Requisition** - Request for capital equipment
+
+### Approval Workflows
+
+Implement multi-level approval based on amount or type:
+
+- **Amount Thresholds** - Different approval levels by dollar amount
+- **Department Authorization** - Manager approval for department requests
+- **Budget Checking** - Verify budget availability before approval
+- **Special Approvals** - Additional approvals for specific product categories
+
+<Tip>
+Use requisitions to centralize purchasing decisions, enforce approval policies, and maintain audit trails for all procurement activities.
+</Tip>
+
+## Purchase Orders
+
+Create and manage vendor purchase orders.
+
+### Creating Purchase Orders
+
+<Steps>
+  <Step title="Navigate to Purchase Order">
+    Go to **Material Management** > **Purchase Order** and click **New**
+  </Step>
+  <Step title="Select Vendor">
+    Choose the vendor, which auto-populates payment terms, price list, and other defaults
+  </Step>
+  <Step title="Enter Order Details">
+    Set order date, promised date, and delivery location (warehouse)
+  </Step>
+  <Step title="Add Products">
+    Manually add line items or use **Create From** to reference requisitions or RFQs
+  </Step>
+  <Step title="Set Pricing">
+    Confirm unit prices, which are automatically pulled from vendor price lists
+  </Step>
+  <Step title="Complete Order">
+    Complete the document to commit the order and send to vendor
+  </Step>
+</Steps>
+
+### Order Types
+
+iDempiere supports various purchase order scenarios:
+
+- **Standard PO** - Regular inventory replenishment
+- **Drop Shipment** - Vendor ships directly to customer
+- **Warehouse Order** - Transfer between warehouses
+- **Service Order** - Purchase of services or labor
+- **On Credit Order** - Return of goods to vendor
+
+### Order Features
+
+- **Multiple Lines** - Order multiple products on single PO
+- **Partial Receipts** - Receive and invoice in multiple shipments
+- **Promised vs. Ordered** - Track vendor promised dates vs. requested dates
+- **Order Confirmation** - Record vendor acknowledgment and changes
+- **Change Orders** - Modify orders with proper authorization
+
+<Note>
+Completing a purchase order changes its status to "Completed" and prevents modification. Use the "Void" action to cancel unwanted orders.
+</Note>
+
+## Vendor Pricing
+
+Manage vendor-specific pricing and contracts.
+
+### Price Lists
+
+Maintain current vendor pricing:
+
+- **Vendor Price Lists** - Standard pricing from each vendor
+- **Contract Pricing** - Negotiated prices for specific periods
+- **Volume Discounts** - Quantity break pricing
+- **Promotional Pricing** - Temporary special prices
+- **Multi-Currency** - Prices in vendor's currency
+
+### Price Management
+
+<Steps>
+  <Step title="Access Price List">
+    Navigate to **Price List** and select or create a vendor price list
+  </Step>
+  <Step title="Import Prices">
+    Use the import process to load vendor price files
+  </Step>
+  <Step title="Set Validity Dates">
+    Specify effective and expiration dates for pricing
+  </Step>
+  <Step title="Configure Discounts">
+    Apply discount schemas for volume or other discounts
+  </Step>
+  <Step title="Review and Activate">
+    Validate prices and activate the price list version
+  </Step>
+</Steps>
+
+### Vendor Selection
+
+Choose optimal vendors based on:
+
+- **Price Comparison** - Compare prices across vendors
+- **Vendor Rating** - Quality, delivery, and service scores
+- **Lead Time** - Time from order to delivery
+- **Minimum Order** - Minimum quantities or amounts
+- **Preferred Vendor** - Strategic supplier relationships
+
+## Request for Quotation (RFQ)
+
+Solicit competitive bids from multiple vendors.
+
+### RFQ Process
+
+<Steps>
+  <Step title="Create RFQ">
+    Navigate to **RFQ** and create a new request with line items
+  </Step>
+  <Step title="Select Vendors">
+    Choose vendors to receive the RFQ
+  </Step>
+  <Step title="Publish RFQ">
+    Send RFQ to vendors via email or portal
+  </Step>
+  <Step title="Collect Responses">
+    Vendors submit quotes with pricing and terms
+  </Step>
+  <Step title="Evaluate Responses">
+    Compare vendor quotes on price, delivery, and terms
+  </Step>
+  <Step title="Award Business">
+    Select winning vendor(s) and create purchase orders
+  </Step>
+</Steps>
+
+### RFQ Features
+
+- **Multi-Vendor Comparison** - Side-by-side quote analysis
+- **Line-Level Awards** - Award different lines to different vendors
+- **Quote Validity** - Track quote expiration dates
+- **Technical Specifications** - Attach requirements and specifications
+- **Vendor Portal** - Allow vendors to submit quotes online
+
+<Tip>
+Use RFQs for high-value purchases or when vendor pricing is unknown. Document the evaluation criteria and selection decision for audit purposes.
+</Tip>
+
+## Material Receipts
+
+Receive goods from vendors into inventory.
+
+### Receipt Process
+
+<Steps>
+  <Step title="Create Receipt">
+    Navigate to **Material Management** > **Material Receipt**
+  </Step>
+  <Step title="Select Purchase Order">
+    Use **Create From** > **Order** to select the purchase order
+  </Step>
+  <Step title="Confirm Quantities">
+    Verify received quantities match the purchase order (adjust if necessary)
+  </Step>
+  <Step title="Quality Inspection" icon="optional">
+    Perform quality checks and record any defects or rejections
+  </Step>
+  <Step title="Assign Serial/Lot Numbers">
+    For tracked products, assign serial numbers or lot batches
+  </Step>
+  <Step title="Complete Receipt">
+    Completing updates inventory and makes items available for use
+  </Step>
+</Steps>
+
+### Receipt Scenarios
+
+- **Full Receipt** - All ordered items received in one shipment
+- **Partial Receipt** - Receive portion of order with remainder to follow
+- **Over Receipt** - Receive more than ordered (requires tolerance settings)
+- **Drop Ship Receipt** - Record receipt when vendor ships to customer
+
+### Receipt Matching
+
+iDempiere tracks the matching status:
+
+- **Not Matched** - Received but not invoiced
+- **Partially Matched** - Some quantity invoiced
+- **Fully Matched** - All quantities invoiced
+- **Match Variance** - Price or quantity differences between receipt and invoice
+
+<Warning>
+Do not complete receipts until goods are physically inspected and accepted. Completing the receipt updates inventory and cost accounting.
+</Warning>
+
+## Vendor Returns
+
+Process returns of defective or unwanted goods.
+
+### Return Process
+
+<Steps>
+  <Step title="Create Vendor RMA">
+    Create a vendor return authorization documenting the return reason
+  </Step>
+  <Step title="Create Return Shipment">
+    Navigate to **Material Receipt** and create a new document
+  </Step>
+  <Step title="Set Document Type">
+    Select "Purchase Order" document type with "Return" sub-type
+  </Step>
+  <Step title="Reference Original Receipt">
+    Use **Create From** to reference the original material receipt
+  </Step>
+  <Step title="Enter Return Quantities">
+    Specify quantities being returned
+  </Step>
+  <Step title="Complete Return">
+    Completing reduces inventory and creates accounting reversals
+  </Step>
+</Steps>
+
+### Return Scenarios
+
+- **Defective Goods** - Quality issues or damage
+- **Wrong Items** - Vendor shipped incorrect products
+- **Overshipped** - Excess quantities
+- **Restocking** - Returning surplus inventory
+
+## Vendor Invoices
+
+Process and match vendor bills to receipts and purchase orders.
+
+### Invoice Entry
+
+<Steps>
+  <Step title="Navigate to Invoice">
+    Go to **Purchasing** > **Invoice (Vendor)**
+  </Step>
+  <Step title="Create from Receipt">
+    Use **Create From** > **Receipt** to invoice received goods
+  </Step>
+  <Step title="Verify Amounts">
+    Confirm invoice matches purchase order prices and receipt quantities
+  </Step>
+  <Step title="Handle Variances">
+    Investigate and resolve price or quantity discrepancies
+  </Step>
+  <Step title="Complete Invoice">
+    Completing posts payable and makes invoice available for payment
+  </Step>
+</Steps>
+
+### Three-Way Match
+
+iDempiere supports three-way matching:
+
+- **Purchase Order** - Authorized pricing and terms
+- **Receipt** - Confirmed receipt of goods
+- **Invoice** - Vendor billing
+
+The system validates that all three documents agree on quantities and prices before allowing invoice completion.
+
+### Invoice Types
+
+- **AP Invoice** - Standard vendor bill
+- **AP Credit Memo** - Credit from vendor for returns or adjustments
+- **Expense Invoice** - Services or expenses without receipts
+- **Debit Memo** - Charge to vendor for freight, restocking, etc.
+
+<Note>
+The Match Invoice process creates connections between receipts and invoices, enabling variance analysis and proper cost accounting.
+</Note>
+
+## Payment Processing
+
+Manage vendor payments efficiently.
+
+### Payment Methods
+
+- **Check** - Print physical checks
+- **ACH/EFT** - Electronic funds transfer
+- **Wire Transfer** - Bank wire for large or international payments
+- **Credit Card** - Corporate card payments
+- **Manual** - Cash or other payment types
+
+### Payment Selection
+
+Batch process multiple vendor payments:
+
+<Steps>
+  <Step title="Create Payment Selection">
+    Navigate to **Payment** > **Payment Selection**
+  </Step>
+  <Step title="Set Parameters">
+    Choose bank account, payment date, and invoice selection criteria
+  </Step>
+  <Step title="Generate Payments">
+    System selects invoices based on due date and discount terms
+  </Step>
+  <Step title="Review Selections">
+    Manually add or remove invoices as needed
+  </Step>
+  <Step title="Process Payments">
+    Generate payment records and check prints or export files
+  </Step>
+</Steps>
+
+### Payment Features
+
+- **Discount Capture** - Automatically apply early payment discounts
+- **Partial Payments** - Pay portion of invoice
+- **Payment Allocation** - Distribute payment across multiple invoices
+- **Void Payments** - Cancel and reverse incorrect payments
+- **Positive Pay** - Export for bank fraud prevention
+
+<Tip>
+Run Payment Selection daily or weekly to capture all available payment discounts while managing cash flow effectively.
+</Tip>
+
+## Vendor Management
+
+Maintain vendor relationships and performance.
+
+### Vendor Information
+
+Track comprehensive vendor data:
+
+- **Contact Information** - Phone, email, website
+- **Banking Details** - ACH/wire information for electronic payments
+- **Payment Terms** - Standard terms and discount schedules
+- **Credit Limits** - Maximum exposure per vendor
+- **Tax Information** - Tax IDs and 1099 reporting
+
+### Vendor Performance
+
+Monitor vendor quality and service:
+
+- **On-Time Delivery** - Percentage of orders delivered as promised
+- **Quality Rating** - Rejection and return rates
+- **Price Performance** - Price stability and competitiveness
+- **Service Level** - Responsiveness and issue resolution
+- **Spend Analysis** - Total purchases by vendor and category
+
+### Vendor Reporting
+
+<CardGroup cols={2}>
+  <Card title="Vendor Statement" icon="file-lines">
+    Outstanding payables and payment history
+  </Card>
+  <Card title="Purchase Analysis" icon="chart-column">
+    Spending by vendor, category, or time period
+  </Card>
+  <Card title="Receipt History" icon="truck">
+    Detailed receiving log by vendor
+  </Card>
+  <Card title="Quality Report" icon="circle-check">
+    Rejection rates and quality issues
+  </Card>
+</CardGroup>
+
+## Contract Management
+
+Manage purchasing agreements and contracts.
+
+### Contract Types
+
+- **Price Agreements** - Fixed pricing for contract period
+- **Volume Commitments** - Minimum purchase requirements
+- **Blanket Orders** - Standing orders with call-offs
+- **Framework Agreements** - Master terms with individual releases
+
+### Contract Features
+
+- **Contract Validity** - Start and end dates
+- **Committed Amounts** - Minimum or maximum purchase values
+- **Release Management** - Issue releases against contract
+- **Compliance Tracking** - Monitor contract utilization
+- **Renewal Management** - Track contract expirations
+
+## Purchasing Analytics
+
+Gain insights into procurement performance.
+
+### Key Metrics
+
+- **Purchase Order Cycle Time** - Requisition to PO completion
+- **Receipt Accuracy** - Match between PO and actual receipts
+- **Invoice Accuracy** - Three-way match exceptions
+- **Payment Terms Compliance** - Discount capture rate
+- **Vendor Lead Time** - Average time from order to delivery
+- **Spend by Category** - Procurement spending analysis
+
+### Reporting Capabilities
+
+- **Open Purchase Orders** - Outstanding commitments
+- **Receipts Due** - Expected deliveries by date
+- **Unmatched Receipts** - Received but not invoiced
+- **Unmatched Invoices** - Invoiced but not received
+- **Payment Forecast** - Projected cash requirements
+- **Vendor Comparison** - Price and performance benchmarking
+
+## Best Practices
+
+### Process Control
+
+- Require requisitions for all purchases to maintain control
+- Implement approval hierarchies based on dollar thresholds
+- Enforce three-way matching for all inventory purchases
+- Use RFQs for purchases above defined amounts
+- Maintain clear separation between purchasing and receiving
+
+### Vendor Management
+
+- Consolidate vendors to increase leverage and simplify management
+- Maintain updated vendor contact and banking information
+- Rate vendor performance regularly and address issues promptly
+- Negotiate payment terms to optimize cash flow
+- Build relationships with strategic vendors
+
+### Cost Control
+
+- Monitor contract compliance and committed spend
+- Capture all available early payment discounts
+- Review and update price lists regularly
+- Analyze spend by category to identify savings opportunities
+- Use RFQs to ensure competitive pricing
+
+### System Configuration
+
+- Configure default warehouses and vendors by product
+- Set up proper approval workflows before going live
+- Define over/under receipt tolerance percentages
+- Enable price variance notifications for review
+- Configure automatic PO numbering and sequences
+
+## Related Modules
+
+<CardGroup cols={2}>
+  <Card title="Inventory" icon="warehouse" href="/modules/inventory">
+    Receive purchased goods into stock
+  </Card>
+  <Card title="Accounting" icon="calculator" href="/modules/accounting">
+    Process vendor invoices and payments
+  </Card>
+  <Card title="CRM" icon="handshake" href="/modules/crm">
+    Manage vendor relationships and contacts
+  </Card>
+  <Card title="Manufacturing" icon="industry" href="/modules/manufacturing">
+    Purchase materials for production
+  </Card>
+</CardGroup>

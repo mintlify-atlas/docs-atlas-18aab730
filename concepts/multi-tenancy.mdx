@@ -1,0 +1,644 @@
+---
+title: 'Multi-Tenancy Architecture'
+description: 'Understanding iDempiere client and organization-based multi-tenancy for complete data isolation'
+icon: 'users'
+---
+
+## Overview
+
+iDempiere implements true multi-tenancy at the database level, enabling multiple independent tenants (clients) to operate within a single system instance with complete data isolation and security.
+
+## Multi-Tenancy Hierarchy
+
+iDempiere uses a two-level tenant hierarchy:
+
+<Steps>
+  <Step title="Client (AD_Client)">
+    Top-level tenant representing a complete business entity with its own:
+    - Business partners (customers, vendors)
+    - Products and prices
+    - Chart of accounts
+    - Users and roles
+    - Complete transaction history
+  </Step>
+  
+  <Step title="Organization (AD_Org)">
+    Sub-unit within a client representing:
+    - Branch offices
+    - Warehouses
+    - Cost centers
+    - Business divisions
+  </Step>
+  
+  <Step title="System Client (ID=0)">
+    Special client containing:
+    - Application dictionary metadata
+    - System configuration
+    - Reference data shared across all clients
+  </Step>
+</Steps>
+
+## Standard Tenant Columns
+
+Every table in iDempiere includes two mandatory columns for tenant isolation:
+
+```java title="Standard Multi-Tenancy Columns"
+public interface TenantColumns {
+    /**
+     * Client/Tenant ID
+     * Isolates data between different business entities
+     */
+    String COLUMNNAME_AD_Client_ID = "AD_Client_ID";
+    
+    /**
+     * Organization ID
+     * Subdivides data within a client
+     */
+    String COLUMNNAME_AD_Org_ID = "AD_Org_ID";
+}
+```
+
+### Automatic Population
+
+From `org.compiere.model.PO`:
+
+```java title="Automatic Tenant Field Population"
+package org.compiere.model;
+
+public abstract class PO implements Serializable {
+    
+    /**
+     * Constructor with source PO and tenant override
+     * @param ctx context
+     * @param source source PO to copy from
+     * @param AD_Client_ID client ID
+     * @param AD_Org_ID organization ID
+     */
+    public PO(Properties ctx, PO source, int AD_Client_ID, int AD_Org_ID) {
+        this(ctx, 0, null);
+        // Copy values from source
+        copyValues(source, this);
+        // Override tenant fields
+        setAD_Client_ID(AD_Client_ID);
+        setAD_Org_ID(AD_Org_ID);
+    }
+    
+    /**
+     * Set AD_Client_ID - called automatically for new records
+     * @param AD_Client_ID client ID
+     */
+    final protected void setAD_Client_ID(int AD_Client_ID) {
+        set_ValueNoCheck("AD_Client_ID", Integer.valueOf(AD_Client_ID));
+    }
+    
+    /**
+     * Get AD_Client_ID
+     * @return client ID
+     */
+    public final int getAD_Client_ID() {
+        Integer ii = (Integer)get_Value("AD_Client_ID");
+        if (ii == null) return 0;
+        return ii.intValue();
+    }
+    
+    /**
+     * Set AD_Org_ID - called automatically for new records
+     * @param AD_Org_ID organization ID
+     */
+    final protected void setAD_Org_ID(int AD_Org_ID) {
+        set_ValueNoCheck("AD_Org_ID", Integer.valueOf(AD_Org_ID));
+    }
+    
+    /**
+     * Get AD_Org_ID
+     * @return organization ID
+     */
+    public final int getAD_Org_ID() {
+        Integer ii = (Integer)get_Value("AD_Org_ID");
+        if (ii == null) return 0;
+        return ii.intValue();
+    }
+}
+```
+
+<Info>
+When creating new records, iDempiere automatically sets AD_Client_ID and AD_Org_ID from the context (session), ensuring records are created in the correct tenant.
+</Info>
+
+## Cross-Tenant Security
+
+iDempiere enforces strict cross-tenant access controls to prevent data leakage.
+
+### CrossTenantException
+
+From `org.adempiere.exceptions.CrossTenantException`:
+
+```java title="Cross-Tenant Violation Detection"
+package org.adempiere.exceptions;
+
+import org.compiere.util.Env;
+
+/**
+ * Exception thrown when a cross-tenant access violation occurs
+ * during a read or write operation.
+ */
+public class CrossTenantException extends AdempiereException {
+    
+    private String fkColumn = null;
+    private Object fkValue = null;
+    
+    /**
+     * Constructs exception for cross-tenant access violation
+     * @param isWriting true if violation during write, false for read
+     * @param tableName table name involved
+     * @param recordID record ID attempted to access
+     */
+    public CrossTenantException(boolean isWriting, String tableName, int recordID) {
+        super("Cross tenant PO " + (isWriting ? "writing" : "reading") + 
+                " request detected from session "
+                + Env.getContext(Env.getCtx(), Env.AD_SESSION_ID) + 
+                " for table " + tableName + " Record_ID=" + recordID);
+    }
+    
+    /**
+     * Exception for invalid cross-tenant ID reference
+     * @param tableName table name
+     * @param recordID record ID from another tenant
+     */
+    public CrossTenantException(String tableName, int recordID) {
+        super("Cross tenant ID " + recordID + " not allowed in " + tableName);
+    }
+    
+    /**
+     * Exception for invalid cross-tenant UUID reference
+     * @param tableName table name
+     * @param recordUU record UUID from another tenant
+     */
+    public CrossTenantException(String tableName, String recordUU) {
+        super("Cross tenant UUID " + recordUU + " not allowed in " + tableName);
+    }
+    
+    /**
+     * Exception for foreign key referencing different tenant
+     * @param fkValue foreign key value
+     * @param fkColumn foreign key column name
+     */
+    public CrossTenantException(Object fkValue, String fkColumn) {
+        super("Cross tenant ID " + fkValue + " not allowed in " + fkColumn);
+        this.fkColumn = fkColumn;
+        this.fkValue = fkValue;
+    }
+    
+    public String getFKColumn() {
+        return fkColumn;
+    }
+    
+    public Object getFKValue() {
+        return fkValue;
+    }
+}
+```
+
+### Enforcement in PO Class
+
+From `org.compiere.model.PO`:
+
+```java
+public abstract class PO implements Serializable {
+    
+    /**
+     * Validate cross-tenant foreign key references
+     * Called automatically before save
+     * @throws CrossTenantException if violation detected
+     */
+    private void validateCrossTenant() {
+        // Check if writing to different tenant
+        if (!is_new()) {
+            int sessionClientId = Env.getAD_Client_ID(p_ctx);
+            if (sessionClientId != getAD_Client_ID()) {
+                throw new CrossTenantException(true, get_TableName(), get_ID());
+            }
+        }
+        
+        // Validate foreign key references
+        for (int i = 0; i < get_ColumnCount(); i++) {
+            if (is_ValueChanged(i)) {
+                Object fkval = get_Value(i);
+                String fkcol = get_ColumnName(i);
+                
+                // Check if this is a foreign key column
+                if (fkcol.endsWith("_ID") && fkval instanceof Integer) {
+                    int fkId = (Integer)fkval;
+                    if (fkId > 0) {
+                        // Validate FK references same tenant
+                        String fkTable = fkcol.substring(0, fkcol.length() - 3);
+                        if (isTenantValidated(fkTable)) {
+                            int fkClientId = getClientIdForRecord(fkTable, fkId);
+                            if (fkClientId != getAD_Client_ID()) {
+                                throw new CrossTenantException(fkval, fkcol);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+<Warning>
+CrossTenantException is thrown automatically when code attempts to:
+- Save a record belonging to a different client
+- Set a foreign key referencing a record from another client
+- Read a record from another client (when security is enforced)
+</Warning>
+
+## MClient - Client Model
+
+From `org.compiere.model.MClient`:
+
+```java title="Client Model Class"
+package org.compiere.model;
+
+import java.util.Properties;
+import org.compiere.util.Env;
+import org.idempiere.cache.ImmutableIntPOCache;
+
+/**
+ * Client Model
+ * Represents a tenant/client in multi-tenant architecture
+ */
+public class MClient extends X_AD_Client implements ImmutablePOSupport {
+    
+    private static final long serialVersionUID = 1L;
+    
+    /** Cache by client ID */
+    private static ImmutableIntPOCache<Integer, MClient> s_cache = 
+        new ImmutableIntPOCache<>("AD_Client", 20);
+    
+    /**
+     * Get client from cache (immutable)
+     * @param ctx context
+     * @param AD_Client_ID client ID
+     * @return client instance
+     */
+    public static MClient get(Properties ctx, int AD_Client_ID) {
+        Integer key = Integer.valueOf(AD_Client_ID);
+        MClient client = s_cache.get(ctx, key, e -> new MClient(ctx, e));
+        if (client != null)
+            return client;
+        
+        client = new MClient(ctx, AD_Client_ID, null);
+        s_cache.put(key, client, e -> new MClient(Env.getCtx(), e));
+        return client;
+    }
+    
+    /**
+     * Get all clients
+     * @param ctx context
+     * @return array of clients
+     */
+    public static MClient[] getAll(Properties ctx) {
+        String whereClause = "AD_Client_ID<>0";  // Exclude system
+        List<MClient> list = new Query(ctx, Table_Name, whereClause, null)
+            .setOrderBy("Value")
+            .list();
+        return list.toArray(new MClient[list.size()]);
+    }
+    
+    /**
+     * Check if this is the system client
+     * @return true if system client (ID=0)
+     */
+    public boolean isSystemClient() {
+        return getAD_Client_ID() == 0;
+    }
+    
+    /**
+     * Get accounting schema for this client
+     * @return accounting schema
+     */
+    public MAcctSchema getAcctSchema() {
+        MAcctSchema[] schemas = MAcctSchema.getClientAcctSchema(getCtx(), getAD_Client_ID());
+        if (schemas.length > 0)
+            return schemas[0];
+        return null;
+    }
+}
+```
+
+## Context-Based Tenant Resolution
+
+iDempiere uses a context (Properties) to track the current tenant:
+
+```java
+import org.compiere.util.Env;
+import java.util.Properties;
+
+// Get context from session
+Properties ctx = Env.getCtx();
+
+// Current client ID
+int clientId = Env.getAD_Client_ID(ctx);
+
+// Current organization ID
+int orgId = Env.getAD_Org_ID(ctx);
+
+// Current user
+int userId = Env.getAD_User_ID(ctx);
+
+// Current role
+int roleId = Env.getAD_Role_ID(ctx);
+
+// Set context values (typically done by login process)
+Env.setContext(ctx, "#AD_Client_ID", 1000000);
+Env.setContext(ctx, "#AD_Org_ID", 1000000);
+Env.setContext(ctx, "#AD_User_ID", 100);
+Env.setContext(ctx, "#AD_Role_ID", 1000000);
+```
+
+<Accordion title="Context Variables">
+iDempiere context stores session-specific values:
+
+- `#AD_Client_ID` - Current client/tenant
+- `#AD_Org_ID` - Current organization
+- `#AD_User_ID` - Current user
+- `#AD_Role_ID` - Current role
+- `#Date` - Current date
+- `#AD_Language` - User's language
+- `$Element_*` - Accounting elements
+
+Variables prefixed with `#` are global, `$` are window-specific.
+</Accordion>
+
+## SQL Tenant Filtering
+
+iDempiere automatically adds tenant filters to SQL queries:
+
+```java
+import org.compiere.model.Query;
+
+// Query automatically filters by current client
+List<MOrder> orders = new Query(ctx, MOrder.Table_Name, 
+    "DocStatus=?", trxName)
+    .setParameters("CO")
+    .setClient_ID()  // Adds AD_Client_ID filter from context
+    .list();
+
+// Generated SQL includes:
+// WHERE DocStatus='CO' AND AD_Client_ID=1000000
+
+// Access filter adds role-based organization filter
+List<MOrder> accessibleOrders = new Query(ctx, MOrder.Table_Name,
+    "DocStatus=?", trxName)
+    .setParameters("CO")
+    .setApplyAccessFilter(true)  // Adds org access filter
+    .list();
+
+// Generated SQL includes organization restrictions based on role
+```
+
+<Note>
+The Query API automatically includes tenant filters unless explicitly disabled. This provides defense-in-depth against cross-tenant data access.
+</Note>
+
+## Organization Hierarchy
+
+Organizations can have parent-child relationships:
+
+```java
+import org.compiere.model.MOrg;
+
+// Get organization
+MOrg org = new MOrg(ctx, orgId, null);
+
+// Check if organization is summary (has children)
+if (org.isSummary()) {
+    // This org has child organizations
+    log.info("Summary organization: " + org.getName());
+}
+
+// Get parent organization
+if (org.getParent_Org_ID() > 0) {
+    MOrg parent = new MOrg(ctx, org.getParent_Org_ID(), null);
+    log.info("Parent org: " + parent.getName());
+}
+
+// Get all organizations accessible to current role
+MRole role = MRole.get(ctx, roleId);
+List<Integer> accessibleOrgs = role.getOrgAccess();
+
+// Check if user can access specific organization
+boolean canAccess = role.isOrgAccess(orgId, false);
+```
+
+## Shared Data Between Tenants
+
+Some data is shared across all clients using AD_Client_ID=0:
+
+<Tabs>
+  <Tab title="System Client (0)">
+    Data visible to all tenants:
+    
+    - **Application Dictionary** - Tables, columns, windows, processes
+    - **Reference Data** - Countries, currencies, languages
+    - **System Configuration** - Preferences, parameters
+    - **Validation Rules** - Shared business rules
+    
+    ```java
+    // System records have AD_Client_ID=0
+    MCountry country = MCountry.get(ctx, "US");
+    log.info("Client ID: " + country.getAD_Client_ID());  // 0
+    
+    // Accessible from any client
+    int currentClient = Env.getAD_Client_ID(ctx);  // e.g., 1000000
+    // country is still accessible
+    ```
+  </Tab>
+  
+  <Tab title="Client-Specific Data">
+    Data isolated per tenant:
+    
+    - **Business Partners** - Customers, vendors, employees
+    - **Products** - Items, services, resources
+    - **Transactions** - Orders, invoices, payments
+    - **Accounting** - Chart of accounts, journals
+    
+    ```java
+    // Client-specific records
+    MBPartner partner = new MBPartner(ctx, partnerId, null);
+    log.info("Client ID: " + partner.getAD_Client_ID());  // 1000000
+    
+    // Only accessible to same client
+    // CrossTenantException thrown if accessed from different client
+    ```
+  </Tab>
+  
+  <Tab title="Organization-Level">
+    Data accessible based on organization hierarchy:
+    
+    - **Warehouses** - Inventory locations
+    - **Locators** - Storage bins
+    - **Cash Books** - Cash management
+    - **Bank Accounts** - Financial accounts
+    
+    ```java
+    // Org-specific access controlled by role
+    MRole role = MRole.get(ctx, roleId);
+    
+    // User can access organizations based on role definition
+    if (role.isOrgAccess(warehouse.getAD_Org_ID(), false)) {
+        // Warehouse is accessible
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Multi-Tenant Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Use Context">
+    Never hardcode client or organization IDs. Always retrieve from context:
+    
+    ```java
+    // Bad
+    order.setAD_Client_ID(1000000);
+    order.setAD_Org_ID(1000000);
+    
+    // Good
+    order.setAD_Client_ID(Env.getAD_Client_ID(ctx));
+    order.setAD_Org_ID(Env.getAD_Org_ID(ctx));
+    
+    // Best - automatic from constructor
+    MOrder order = new MOrder(ctx, 0, trxName);
+    // Client and Org set automatically
+    ```
+  </Accordion>
+  
+  <Accordion title="Validate Foreign Keys">
+    Ensure foreign key references are within the same tenant:
+    
+    ```java
+    // Validate partner belongs to same client
+    MBPartner partner = new MBPartner(ctx, partnerId, null);
+    if (partner.getAD_Client_ID() != order.getAD_Client_ID()) {
+        throw new AdempiereException("Partner from different client");
+    }
+    ```
+    
+    iDempiere does this automatically, but explicit checks add clarity.
+  </Accordion>
+  
+  <Accordion title="Use Query Filters">
+    Always apply client filtering in queries:
+    
+    ```java
+    // Explicit client filter
+    List<MProduct> products = new Query(ctx, MProduct.Table_Name,
+        "AD_Client_ID=?", trxName)
+        .setParameters(Env.getAD_Client_ID(ctx))
+        .list();
+    
+    // Or use built-in filter
+    List<MProduct> products = new Query(ctx, MProduct.Table_Name,
+        null, trxName)
+        .setClient_ID()  // Adds filter automatically
+        .list();
+    ```
+  </Accordion>
+  
+  <Accordion title="Test with Multiple Tenants">
+    Always test customizations with multiple clients to verify isolation:
+    
+    ```java
+    // Test helper
+    public void testMultiTenantIsolation() {
+        // Create records in client 1
+        Env.setContext(ctx, "#AD_Client_ID", 1000000);
+        MOrder order1 = createTestOrder(ctx);
+        
+        // Switch to client 2
+        Env.setContext(ctx, "#AD_Client_ID", 1000001);
+        
+        // Verify order1 is not accessible
+        MOrder test = new MOrder(ctx, order1.getC_Order_ID(), null);
+        assertNull(test, "Order from client 1 should not be accessible");
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Plugin Considerations
+
+When developing plugins for multi-tenant environments:
+
+```java
+import org.compiere.model.ModelValidator;
+
+public class CustomValidator implements ModelValidator {
+    
+    private int m_AD_Client_ID = -1;
+    
+    @Override
+    public void initialize(ModelValidationEngine engine, MClient client) {
+        // Validator is initialized per client
+        m_AD_Client_ID = client.getAD_Client_ID();
+        
+        log.info("Initializing validator for client: " + client.getName());
+        
+        // Register for events in this client only
+        engine.addModelChange(MOrder.Table_Name, this);
+    }
+    
+    @Override
+    public int getAD_Client_ID() {
+        return m_AD_Client_ID;
+    }
+    
+    @Override
+    public String modelChange(PO po, int type) {
+        // This method is only called for records in this client
+        // po.getAD_Client_ID() == m_AD_Client_ID
+        
+        return null;
+    }
+}
+```
+
+<Warning>
+Model validators are initialized once per client. Static data in validators may be shared across all clients - use instance variables for client-specific state.
+</Warning>
+
+## Security Implications
+
+<CardGroup cols={2}>
+  <Card title="Database-Level Isolation" icon="database">
+    Every query includes AD_Client_ID filter, enforced at the data access layer
+  </Card>
+  
+  <Card title="Application-Level Checks" icon="shield-check">
+    PO class validates cross-tenant references before save operations
+  </Card>
+  
+  <Card title="Session-Level Context" icon="user-lock">
+    Client ID bound to session, cannot be changed without re-authentication
+  </Card>
+  
+  <Card title="Role-Based Access" icon="key">
+    Organization access controlled by role definitions, enforced in queries
+  </Card>
+</CardGroup>
+
+## Related Topics
+
+<CardGroup cols={3}>
+  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
+    OSGi framework and system design
+  </Card>
+  <Card title="Data Model" icon="database" href="/concepts/data-model">
+    PO class and table structure
+  </Card>
+  <Card title="OSGi Plugins" icon="puzzle-piece" href="/concepts/osgi-plugins">
+    Multi-tenant plugin development
+  </Card>
+</CardGroup>

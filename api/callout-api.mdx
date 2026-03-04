@@ -1,0 +1,550 @@
+---
+title: Callout API
+description: Complete reference for implementing field validation and callouts in iDempiere
+---
+
+## Overview
+
+Callouts are client-side event handlers that execute when field values change in iDempiere windows. They are used for:
+
+- Field validation and cross-field validation
+- Setting default values in other fields
+- Dynamic field updates based on user input
+- Real-time calculations
+
+**Base Package:** `org.adempiere.base` and `org.compiere.model`
+
+**Source Files:**
+- `org.adempiere.base/src/org/adempiere/base/IColumnCallout.java`
+- `org.adempiere.base/src/org/compiere/model/Callout.java`
+- `org.adempiere.base/src/org/compiere/model/CalloutEngine.java`
+
+## Interfaces
+
+### IColumnCallout Interface
+
+The modern, simplified callout interface.
+
+**Package:** `org.adempiere.base`
+
+#### start Method
+
+```java
+public String start(Properties ctx, int WindowNo, 
+                    GridTab mTab, GridField mField, 
+                    Object value, Object oldValue)
+```
+
+<ParamField path="ctx" type="Properties" required>
+  Context containing session and environment variables
+</ParamField>
+
+<ParamField path="WindowNo" type="int" required>
+  Window number (for multi-window environment)
+</ParamField>
+
+<ParamField path="mTab" type="GridTab" required>
+  Tab model containing the field and current record data
+</ParamField>
+
+<ParamField path="mField" type="GridField" required>
+  Field model that triggered the callout
+</ParamField>
+
+<ParamField path="value" type="Object" required>
+  The new value being set
+</ParamField>
+
+<ParamField path="oldValue" type="Object" required>
+  The previous value before change
+</ParamField>
+
+<ResponseField name="return" type="String">
+  Empty string ("") for success, or error message to display and reject the change
+</ResponseField>
+
+<Note>
+When the callout is invoked, the Tab model already has the new value set.
+</Note>
+
+### Callout Interface (Legacy)
+
+The traditional callout interface with additional conversion method.
+
+**Package:** `org.compiere.model`
+
+#### start Method
+
+```java
+public String start(Properties ctx, String method, int WindowNo,
+                   GridTab mTab, GridField mField, 
+                   Object value, Object oldValue)
+```
+
+<ParamField path="method" type="String" required>
+  Method name in format "ClassName.methodName"
+</ParamField>
+
+Other parameters same as IColumnCallout.
+
+#### convert Method
+
+```java
+public String convert(String method, String value)
+```
+
+<ParamField path="method" type="String" required>
+  Conversion method name in format "User_Function"
+</ParamField>
+
+<ParamField path="value" type="String" required>
+  Input value to convert
+</ParamField>
+
+<ResponseField name="return" type="String">
+  Converted value, or null if method not found
+</ResponseField>
+
+Used by import format rows to convert input values.
+
+## Implementation
+
+### Using IColumnCallout (Recommended)
+
+Direct implementation of the interface:
+
+```java
+package com.example.callout;
+
+import java.util.Properties;
+import org.adempiere.base.IColumnCallout;
+import org.compiere.model.GridField;
+import org.compiere.model.GridTab;
+import org.compiere.util.Env;
+
+public class BPartnerCallout implements IColumnCallout {
+    
+    @Override
+    public String start(Properties ctx, int WindowNo, 
+                       GridTab mTab, GridField mField, 
+                       Object value, Object oldValue) {
+        
+        String columnName = mField.getColumnName();
+        
+        if (columnName.equals("C_BPartner_ID")) {
+            return bpartner(ctx, WindowNo, mTab, mField, value);
+        }
+        
+        return "";
+    }
+    
+    private String bpartner(Properties ctx, int WindowNo, 
+                           GridTab mTab, GridField mField, 
+                           Object value) {
+        
+        if (value == null || (Integer)value <= 0)
+            return "";
+        
+        int bpartnerId = (Integer)value;
+        
+        // Load business partner and set related fields
+        MBPartner bp = new MBPartner(ctx, bpartnerId, null);
+        
+        mTab.setValue("Bill_BPartner_ID", bpartnerId);
+        mTab.setValue("Bill_Location_ID", bp.getPrimaryBill_Location_ID());
+        mTab.setValue("M_PriceList_ID", bp.getM_PriceList_ID());
+        mTab.setValue("PaymentRule", bp.getPaymentRule());
+        mTab.setValue("C_PaymentTerm_ID", bp.getC_PaymentTerm_ID());
+        
+        return "";
+    }
+}
+```
+
+### Using CalloutEngine (Traditional)
+
+Extend CalloutEngine for more structure:
+
+```java
+package com.example.callout;
+
+import java.math.BigDecimal;
+import java.util.Properties;
+import org.compiere.model.CalloutEngine;
+import org.compiere.model.GridField;
+import org.compiere.model.GridTab;
+import org.compiere.util.DB;
+import org.compiere.util.Env;
+
+public class CalloutOrder extends CalloutEngine {
+    
+    /**
+     * Order - Business Partner
+     * Sets location, price list, payment terms
+     */
+    public String bpartner(Properties ctx, int WindowNo, 
+                          GridTab mTab, GridField mField, 
+                          Object value) {
+        
+        if (isCalloutActive())  // Prevent recursive calls
+            return "";
+        
+        Integer C_BPartner_ID = (Integer)value;
+        if (C_BPartner_ID == null || C_BPartner_ID <= 0)
+            return "";
+        
+        MBPartner bp = MBPartner.get(ctx, C_BPartner_ID);
+        
+        // Set Bill Partner
+        if (bp.getBill_BPartner_ID() > 0)
+            mTab.setValue("Bill_BPartner_ID", bp.getBill_BPartner_ID());
+        else
+            mTab.setValue("Bill_BPartner_ID", C_BPartner_ID);
+        
+        // Set locations
+        int billLocationId = bp.getPrimaryBill_Location_ID();
+        if (billLocationId > 0)
+            mTab.setValue("Bill_Location_ID", billLocationId);
+        
+        int shipLocationId = bp.getPrimaryShip_Location_ID();
+        if (shipLocationId > 0)
+            mTab.setValue("C_BPartner_Location_ID", shipLocationId);
+        
+        // Set price list
+        boolean isSOTrx = "Y".equals(Env.getContext(ctx, WindowNo, "IsSOTrx"));
+        int priceListId = bp.getM_PriceList_ID();
+        if (priceListId > 0)
+            mTab.setValue("M_PriceList_ID", priceListId);
+        
+        // Set payment terms
+        int paymentTermId = bp.getC_PaymentTerm_ID();
+        if (paymentTermId > 0)
+            mTab.setValue("C_PaymentTerm_ID", paymentTermId);
+        
+        // Set payment rule
+        String paymentRule = bp.getPaymentRule();
+        if (paymentRule != null)
+            mTab.setValue("PaymentRule", paymentRule);
+        
+        return "";
+    }
+    
+    /**
+     * Order Line - Product
+     * Sets UOM, price, tax
+     */
+    public String product(Properties ctx, int WindowNo, 
+                         GridTab mTab, GridField mField, 
+                         Object value) {
+        
+        Integer M_Product_ID = (Integer)value;
+        if (M_Product_ID == null || M_Product_ID <= 0)
+            return "";
+        
+        MProduct product = MProduct.get(ctx, M_Product_ID);
+        
+        // Set UOM
+        mTab.setValue("C_UOM_ID", product.getC_UOM_ID());
+        
+        // Get price list from header
+        int priceListId = Env.getContextAsInt(ctx, WindowNo, "M_PriceList_ID");
+        int bpartnerId = Env.getContextAsInt(ctx, WindowNo, "C_BPartner_ID");
+        
+        // Get price
+        MProductPricing pp = new MProductPricing(M_Product_ID, bpartnerId, 
+                                                 Env.ONE, true, null);
+        pp.setM_PriceList_ID(priceListId);
+        
+        BigDecimal priceList = pp.getPriceList();
+        BigDecimal priceStd = pp.getPriceStd();
+        BigDecimal priceLimit = pp.getPriceLimit();
+        
+        mTab.setValue("PriceList", priceList);
+        mTab.setValue("PriceStd", priceStd);
+        mTab.setValue("PriceLimit", priceLimit);
+        mTab.setValue("PriceActual", priceStd);
+        mTab.setValue("PriceEntered", priceStd);
+        mTab.setValue("Discount", pp.getDiscount());
+        
+        // Set tax
+        int taxId = Tax.get(ctx, M_Product_ID, 0, 
+                           Env.getContextAsDate(ctx, WindowNo, "DateOrdered"),
+                           Env.getContextAsInt(ctx, WindowNo, "AD_Org_ID"),
+                           Env.getContextAsInt(ctx, WindowNo, "M_Warehouse_ID"),
+                           Env.getContextAsInt(ctx, WindowNo, "C_BPartner_Location_ID"),
+                           Env.getContextAsInt(ctx, WindowNo, "Bill_Location_ID"),
+                           "Y".equals(Env.getContext(ctx, WindowNo, "IsSOTrx")),
+                           null);
+        if (taxId > 0)
+            mTab.setValue("C_Tax_ID", taxId);
+        
+        return "";
+    }
+    
+    /**
+     * Order Line - Quantity or Price
+     * Calculate line total
+     */
+    public String qty(Properties ctx, int WindowNo, 
+                     GridTab mTab, GridField mField, 
+                     Object value) {
+        
+        if (isCalloutActive())
+            return "";
+        
+        BigDecimal qty = (BigDecimal)mTab.getValue("QtyOrdered");
+        BigDecimal price = (BigDecimal)mTab.getValue("PriceActual");
+        
+        if (qty == null)
+            qty = Env.ZERO;
+        if (price == null)
+            price = Env.ZERO;
+        
+        BigDecimal lineNet = qty.multiply(price);
+        
+        mTab.setValue("LineNetAmt", lineNet);
+        
+        return "";
+    }
+}
+```
+
+### Using @Callout Annotation
+
+For iDempiere 7.1+, use annotations for cleaner code:
+
+```java
+package com.example.callout;
+
+import java.math.BigDecimal;
+import java.util.Properties;
+import org.adempiere.base.annotation.Callout;
+import org.compiere.model.CalloutEngine;
+import org.compiere.model.GridField;
+import org.compiere.model.GridTab;
+
+public class AnnotatedCallout extends CalloutEngine {
+    
+    @Callout(tabName = "C_Order", fieldName = "C_BPartner_ID")
+    public String onBPartnerChange(Properties ctx, int WindowNo,
+                                   GridTab mTab, GridField mField,
+                                   Object value, Object oldValue) {
+        
+        if (value == null || (Integer)value <= 0)
+            return "";
+        
+        int bpartnerId = (Integer)value;
+        MBPartner bp = new MBPartner(ctx, bpartnerId, null);
+        
+        mTab.setValue("M_PriceList_ID", bp.getM_PriceList_ID());
+        mTab.setValue("C_PaymentTerm_ID", bp.getC_PaymentTerm_ID());
+        
+        return "";
+    }
+    
+    @Callout(tabName = "C_OrderLine", fieldName = "M_Product_ID")
+    public String onProductChange(Properties ctx, int WindowNo,
+                                 GridTab mTab, GridField mField,
+                                 Object value, Object oldValue) {
+        
+        if (value == null || (Integer)value <= 0)
+            return "";
+        
+        int productId = (Integer)value;
+        MProduct product = MProduct.get(ctx, productId);
+        
+        mTab.setValue("C_UOM_ID", product.getC_UOM_ID());
+        mTab.setValue("Description", product.getDescription());
+        
+        return "";
+    }
+}
+```
+
+## GridTab Methods
+
+Common methods for interacting with the tab:
+
+### Get Values
+
+```java
+Object getValue(String columnName)
+Object getValue(int index)
+String getValueAsString(String columnName)
+int getValueAsInt(String columnName)
+boolean getValueAsBoolean(String columnName)
+BigDecimal getValueAsBigDecimal(String columnName)
+Timestamp getValueAsTimestamp(String columnName)
+```
+
+### Set Values
+
+```java
+void setValue(String columnName, Object value)
+void setValue(GridField field, Object value)
+```
+
+### Field Access
+
+```java
+GridField getField(String columnName)
+boolean isDisplayed(String columnName)
+void setDisplayLogic(String columnName, String logic)
+```
+
+## GridField Methods
+
+### Get Field Information
+
+```java
+String getColumnName()
+String getHeader()
+int getDisplayType()
+boolean isMandatory()
+boolean isReadOnly()
+```
+
+### Get/Set Values
+
+```java
+Object getValue()
+void setValue(Object value)
+Object getOldValue()
+```
+
+## Common Patterns
+
+### Preventing Recursive Calls
+
+```java
+public class MyCallout extends CalloutEngine {
+    
+    public String someField(Properties ctx, int WindowNo,
+                           GridTab mTab, GridField mField,
+                           Object value) {
+        
+        if (isCalloutActive())  // Prevents infinite loops
+            return "";
+        
+        // Your logic here
+        mTab.setValue("OtherField", someValue);
+        
+        return "";
+    }
+}
+```
+
+### Validation with Error Messages
+
+```java
+public String validateQty(Properties ctx, int WindowNo,
+                         GridTab mTab, GridField mField,
+                         Object value) {
+    
+    BigDecimal qty = (BigDecimal)value;
+    
+    if (qty == null || qty.signum() <= 0) {
+        return "Quantity must be greater than zero";
+    }
+    
+    // Check available stock
+    int productId = mTab.getValueAsInt("M_Product_ID");
+    int warehouseId = Env.getContextAsInt(ctx, WindowNo, "M_Warehouse_ID");
+    
+    BigDecimal available = MStorage.getQtyAvailable(warehouseId, productId, 0, null);
+    
+    if (qty.compareTo(available) > 0) {
+        return "Insufficient stock. Available: " + available;
+    }
+    
+    return "";
+}
+```
+
+### Cross-Field Updates
+
+```java
+public String priceActual(Properties ctx, int WindowNo,
+                         GridTab mTab, GridField mField,
+                         Object value) {
+    
+    BigDecimal priceActual = (BigDecimal)value;
+    BigDecimal priceList = mTab.getValueAsBigDecimal("PriceList");
+    
+    if (priceActual == null || priceList == null || priceList.signum() == 0)
+        return "";
+    
+    // Calculate discount
+    BigDecimal discount = priceList.subtract(priceActual)
+        .multiply(Env.ONEHUNDRED)
+        .divide(priceList, 2, RoundingMode.HALF_UP);
+    
+    mTab.setValue("Discount", discount);
+    
+    // Update line total
+    BigDecimal qty = mTab.getValueAsBigDecimal("QtyOrdered");
+    if (qty != null) {
+        BigDecimal lineNet = qty.multiply(priceActual);
+        mTab.setValue("LineNetAmt", lineNet);
+    }
+    
+    return "";
+}
+```
+
+### Database Lookups
+
+```java
+public String warehouse(Properties ctx, int WindowNo,
+                       GridTab mTab, GridField mField,
+                       Object value) {
+    
+    Integer warehouseId = (Integer)value;
+    if (warehouseId == null || warehouseId <= 0)
+        return "";
+    
+    // Get default locator for warehouse
+    String sql = "SELECT M_Locator_ID FROM M_Locator " +
+                 "WHERE M_Warehouse_ID=? AND IsDefault='Y'";
+    
+    int locatorId = DB.getSQLValue(null, sql, warehouseId);
+    
+    if (locatorId > 0)
+        mTab.setValue("M_Locator_ID", locatorId);
+    
+    return "";
+}
+```
+
+## Callout Registration
+
+To register a callout in iDempiere:
+
+1. **Implement** your callout class
+2. **Register in Application Dictionary:**
+   - Go to **Table and Column** window
+   - Find your table and column
+   - In column record, set **Callout** field to your class and method:
+     - For IColumnCallout: `com.example.callout.MyCallout`
+     - For traditional Callout: `com.example.callout.MyCallout.methodName`
+3. **Deploy** your callout class in a plugin/jar
+4. **Restart** client to load the callout
+
+## Best Practices
+
+1. **Return Empty String:** Always return `""` for success, never null
+2. **Validate Input:** Check for null and invalid values early
+3. **Prevent Recursion:** Use `isCalloutActive()` when setting values that might trigger other callouts
+4. **Keep It Fast:** Callouts run synchronously on UI thread - avoid heavy operations
+5. **Use Context:** Read window context with `Env.getContext(ctx, WindowNo, "VariableName")`
+6. **Error Messages:** Return user-friendly error messages; use `@Variable@` for translation
+7. **Null Safety:** Always check for null before casting or using values
+8. **Cache Lookups:** Cache frequently accessed data when possible
+9. **Transaction:** Don't use transactions in callouts - they're UI operations
+10. **Testing:** Test callouts thoroughly with various field combinations
+
+## See Also
+
+- [Model API](/api/model-api) - Working with persistent objects
+- [Process API](/api/process-api) - Server processes
+- [Factory Pattern](/api/factory-pattern) - Callout factories

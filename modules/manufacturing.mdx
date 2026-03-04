@@ -1,0 +1,494 @@
+---
+title: "Manufacturing Module"
+description: "Production planning, bill of materials, and manufacturing execution in iDempiere"
+---
+
+The Manufacturing module in iDempiere provides comprehensive production management capabilities, from material planning through production execution and cost tracking.
+
+## Overview
+
+iDempiere's manufacturing functionality supports make-to-stock and make-to-order production scenarios with integrated bill of materials (BOM), production workflows, capacity planning, and cost collection. The system is built on the proven LibreoPlan/E-Evolution manufacturing engine.
+
+<CardGroup cols={2}>
+  <Card title="Bill of Materials" icon="list-check" href="#bill-of-materials">
+    Define product structures and component relationships
+  </Card>
+  <Card title="Production Planning" icon="calendar-days" href="#production-planning">
+    Plan material requirements and production schedules
+  </Card>
+  <Card title="Production Orders" icon="industry" href="#production-orders">
+    Execute manufacturing orders and track progress
+  </Card>
+  <Card title="Cost Tracking" icon="coins" href="#manufacturing-costing">
+    Collect actual costs and analyze variances
+  </Card>
+</CardGroup>
+
+## Bill of Materials (BOM)
+
+Define product structures and manufacturing recipes.
+
+### BOM Structure
+
+A Bill of Materials defines the components and quantities needed to produce a finished product:
+
+- **Parent Product** - The finished item being produced
+- **Component Products** - Raw materials and subassemblies required
+- **Component Quantities** - Amount of each component per parent unit
+- **BOM Type** - Make-to-stock, make-to-order, or mixed
+- **BOM Levels** - Support for multi-level assemblies and subassemblies
+
+### Creating Bills of Materials
+
+<Steps>
+  <Step title="Navigate to Product BOM">
+    Go to **Manufacturing Management** > **Product BOM & Formula**
+  </Step>
+  <Step title="Select Parent Product">
+    Choose the finished product you're defining the BOM for
+  </Step>
+  <Step title="Set BOM Type">
+    Select the BOM type (current active, alternative, or variant)
+  </Step>
+  <Step title="Add Component Lines">
+    In the **BOM Line** tab, add each component product with its quantity
+  </Step>
+  <Step title="Define Operations" icon="optional">
+    Link components to specific manufacturing operations if using workflows
+  </Step>
+  <Step title="Set Validity Dates">
+    Specify effective date range for this BOM version
+  </Step>
+</Steps>
+
+### BOM Features
+
+- **Multi-Level BOMs** - Components can themselves have BOMs for subassemblies
+- **BOM Versions** - Maintain historical and future BOM configurations
+- **Component Substitutes** - Define alternative components
+- **Scrap Factors** - Account for normal production waste
+- **Lead Time Offsets** - Schedule component availability before operation
+- **Component Type** - Co-products, by-products, and phantom assemblies
+
+<Tip>
+Use phantom assemblies for subassemblies that are never stocked. The system will automatically explode phantom BOMs to procure raw materials directly.
+</Tip>
+
+## Manufacturing Workflows
+
+Define production routings and operations.
+
+### Workflow Structure
+
+Manufacturing workflows define the sequence of operations:
+
+- **Workflow** - Complete production process for a product
+- **Nodes** - Individual operations or process steps
+- **Node Sequence** - Order of operations with dependencies
+- **Resources** - Equipment, labor, or facilities required
+- **Duration** - Setup time, run time per unit, and teardown time
+
+### Workflow Configuration
+
+<Steps>
+  <Step title="Create Workflow">
+    Navigate to **Manufacturing Management** > **Product Workflow**
+  </Step>
+  <Step title="Define Operations">
+    Add workflow nodes for each manufacturing operation
+  </Step>
+  <Step title="Sequence Operations">
+    Connect nodes to define process flow and dependencies
+  </Step>
+  <Step title="Assign Resources">
+    Specify equipment and labor required for each operation
+  </Step>
+  <Step title="Set Durations">
+    Enter setup time, run rate, and queue times
+  </Step>
+  <Step title="Link to BOM">
+    Associate workflow with product BOM for complete production definition
+  </Step>
+</Steps>
+
+### Operation Types
+
+- **Make** - Manufacturing or assembly operation
+- **Inspect** - Quality control checkpoint
+- **Setup** - Machine or tooling preparation
+- **Queue** - Waiting time between operations
+- **Move** - Transportation between work centers
+
+### Resource Planning
+
+Define manufacturing resources:
+
+- **Work Centers** - Production areas or departments
+- **Machines** - Equipment with capacity and availability
+- **Labor** - Workforce skills and capacity
+- **Tooling** - Tools and fixtures required
+- **Calendars** - Working hours and availability schedules
+
+<Note>
+Workflows enable accurate capacity planning, production scheduling, and labor tracking. Define realistic operation times for accurate lead time calculations.
+</Note>
+
+## Production Planning
+
+Plan material requirements and production schedules.
+
+### Material Requirements Planning (MRP)
+
+MRP calculates component requirements based on demand:
+
+<Steps>
+  <Step title="Define Demand">
+    Demand comes from sales orders, forecasts, or safety stock levels
+  </Step>
+  <Step title="Run MRP Process">
+    Execute **MRP** process to calculate requirements
+  </Step>
+  <Step title="Review Recommendations">
+    MRP generates manufacturing orders and purchase requisitions
+  </Step>
+  <Step title="Adjust Plans">
+    Modify quantities, dates, or suppliers as needed
+  </Step>
+  <Step title="Create Orders">
+    Convert MRP recommendations to production and purchase orders
+  </Step>
+</Steps>
+
+### MRP Calculation
+
+The MRP engine considers:
+
+- **Gross Requirements** - Total demand from all sources
+- **On-Hand Inventory** - Current stock available
+- **Scheduled Receipts** - Open purchase and production orders
+- **Lead Times** - Manufacturing and procurement lead times
+- **Lot Sizing** - Minimum, maximum, and multiple order quantities
+- **Safety Stock** - Buffer inventory levels
+
+### Planning Parameters
+
+Configure per product:
+
+- **Planning Method** - MRP, reorder point, or none
+- **Lead Time** - Days to manufacture or procure
+- **Lot Size** - EOQ, fixed lot, lot-for-lot, or period order quantity
+- **Safety Stock** - Minimum inventory buffer
+- **Order Policy** - Make vs. buy decisions
+- **Planning Horizon** - How far ahead to plan
+
+<Warning>
+MRP recalculates all requirements each run. Ensure data accuracy in BOMs, inventory, and open orders before running MRP to avoid incorrect recommendations.
+</Warning>
+
+## Production Orders
+
+Execute manufacturing with production order management.
+
+### Production Order Lifecycle
+
+<Steps>
+  <Step title="Create Production Order">
+    Navigate to **Manufacturing Order** and create new order for product quantity
+  </Step>
+  <Step title="Schedule Production">
+    Set start date and system calculates finish date based on BOM and workflow
+  </Step>
+  <Step title="Reserve Components">
+    System reserves component inventory for the production order
+  </Step>
+  <Step title="Issue Materials">
+    Issue components from warehouse to production floor
+  </Step>
+  <Step title="Execute Operations">
+    Perform manufacturing operations and record progress
+  </Step>
+  <Step title="Receive Finished Goods">
+    Receive completed products into finished goods inventory
+  </Step>
+  <Step title="Close Order">
+    Complete production order and analyze costs
+  </Step>
+</Steps>
+
+### Order Types
+
+- **Standard Production Order** - Regular manufacturing execution
+- **Rework Order** - Repair or rework defective products
+- **Maintenance Order** - Equipment repair or preventive maintenance
+- **Disassembly Order** - Break down assemblies into components
+
+### Material Issue Methods
+
+- **Manual Issue** - Explicitly issue components with transactions
+- **Backflush** - Automatically consume materials when production completes
+- **Floor Stock** - Components consumed without individual tracking
+
+### Production Order Features
+
+- **Multi-Level Orders** - Automatic creation of orders for subassemblies
+- **Order Splitting** - Divide large orders into multiple lots
+- **Order Combining** - Combine small orders for efficiency
+- **Alternative BOMs** - Use different BOMs based on availability
+- **Resource Loading** - Schedule operations based on resource capacity
+
+<Tip>
+Use backflushing for high-volume, low-cost components to reduce transaction overhead. Reserve manual issuing for expensive or closely-controlled materials.
+</Tip>
+
+## Manufacturing Execution
+
+Track production progress and collect actual data.
+
+### Shop Floor Control
+
+Monitor and control production activities:
+
+- **Work Order Release** - Release orders to production floor
+- **Operation Reporting** - Report completion of individual operations
+- **Quantity Reporting** - Report produced quantities and scrap
+- **Labor Reporting** - Track labor hours by operation
+- **Material Consumption** - Record actual component usage
+
+### Cost Collectors
+
+Capture actual production costs:
+
+<Steps>
+  <Step title="Create Cost Collector">
+    System generates cost collectors for production order operations
+  </Step>
+  <Step title="Report Quantities">
+    Enter produced quantity, scrap, and rejected units
+  </Step>
+  <Step title="Record Labor">
+    Log labor hours and operators
+  </Step>
+  <Step title="Report Materials">
+    Confirm materials consumed (if not backflushed)
+  </Step>
+  <Step title="Process Collector">
+    Process to create accounting entries and update costs
+  </Step>
+</Steps>
+
+### Actual Data Collection
+
+- **Produced Quantities** - Finished goods completed
+- **Scrap Quantities** - Normal and abnormal waste
+- **Labor Hours** - Direct and indirect labor time
+- **Machine Time** - Equipment utilization
+- **Material Variances** - Actual vs. standard component usage
+
+### Quality Control
+
+Integrate quality management:
+
+- **Inspection Points** - Define where inspections occur in workflow
+- **Quality Tests** - Record test results and measurements
+- **Accept/Reject Decisions** - Approve or reject production lots
+- **Non-Conformance** - Track quality issues and root causes
+- **Rework Routing** - Direct rejected items to rework operations
+
+<Note>
+Cost collectors link manufacturing execution to financial accounting, enabling accurate job costing and variance analysis.
+</Note>
+
+## Manufacturing Costing
+
+Track production costs and analyze variances.
+
+### Cost Elements
+
+Manufacturing costs comprise:
+
+- **Material Costs** - Raw materials and components consumed
+- **Labor Costs** - Direct labor for production operations
+- **Overhead** - Allocated manufacturing overhead
+- **Outside Processing** - Subcontracted operations
+- **Scrap Costs** - Cost of normal and abnormal waste
+
+### Cost Calculation Methods
+
+- **Standard Costing** - Compare actual costs to predetermined standards
+- **Actual Costing** - Calculate actual cost per production run
+- **Activity-Based Costing** - Allocate overhead based on cost drivers
+
+### Variance Analysis
+
+Identify and analyze production variances:
+
+- **Material Variance** - Difference in material quantity or price
+- **Labor Variance** - Difference in labor hours or rate
+- **Overhead Variance** - Over or under-absorbed overhead
+- **Scrap Variance** - Waste exceeding standard allowances
+- **Efficiency Variance** - Production time vs. standard time
+
+### Cost Reporting
+
+<CardGroup cols={2}>
+  <Card title="Job Cost Report" icon="file-invoice-dollar">
+    Detailed costs by production order
+  </Card>
+  <Card title="Cost Variance Report" icon="chart-line">
+    Actual vs. standard cost analysis
+  </Card>
+  <Card title="Production Efficiency" icon="gauge-high">
+    Labor and machine utilization metrics
+  </Card>
+  <Card title="Scrap Analysis" icon="trash">
+    Waste tracking by product and operation
+  </Card>
+</CardGroup>
+
+<Tip>
+Review variance reports regularly to identify process improvements, update standards, and investigate abnormal costs.
+</Tip>
+
+## Capacity Planning
+
+Plan and optimize resource utilization.
+
+### Capacity Requirements Planning (CRP)
+
+Validate production schedule against capacity:
+
+- **Load Analysis** - Calculate resource requirements by period
+- **Capacity vs. Load** - Compare available capacity to planned load
+- **Bottleneck Identification** - Find constrained resources
+- **What-If Scenarios** - Model different production scenarios
+- **Capacity Adjustments** - Plan overtime, shifts, or equipment additions
+
+### Resource Scheduling
+
+- **Finite Scheduling** - Schedule within available capacity
+- **Infinite Scheduling** - Schedule assuming unlimited capacity
+- **Priority Scheduling** - Sequence based on due dates or priorities
+- **Optimization** - Minimize changeovers or maximize throughput
+
+### Work Center Management
+
+- **Calendars** - Define working hours and shifts
+- **Capacity** - Set available hours per period
+- **Efficiency** - Factor in resource utilization rates
+- **Queue Times** - Model waiting time between operations
+- **Maintenance Windows** - Schedule preventive maintenance
+
+## Advanced Manufacturing Features
+
+### Configure-to-Order (CTO)
+
+Manufacture customized products:
+
+- **Product Configurator** - Customer selects options and features
+- **Dynamic BOM** - Generate BOM based on configuration
+- **Dynamic Workflow** - Adapt operations to selected options
+- **Custom Pricing** - Calculate price from configuration
+
+### By-Products and Co-Products
+
+Handle multiple outputs from single production:
+
+- **Co-Products** - Multiple primary products from one process
+- **By-Products** - Secondary outputs with value
+- **Cost Allocation** - Distribute costs across outputs
+
+### Kanban Manufacturing
+
+Implement pull-based production:
+
+- **Kanban Squares** - Visual inventory management
+- **Demand Pull** - Produce based on consumption
+- **Replenishment Rules** - Automatic order generation
+- **Container Management** - Track containers through system
+
+### Subcontracting
+
+Manage outside processing:
+
+- **Subcontract Orders** - Send materials to subcontractors
+- **Material Transfer** - Track materials at subcontractor
+- **Outside Processing** - Receive processed materials back
+- **Subcontract Invoicing** - Match invoices to processed quantities
+
+<Note>
+Subcontracting in iDempiere uses distribution orders to transfer materials to the subcontractor and production orders to receive finished goods.
+</Note>
+
+## Production Reporting
+
+Monitor manufacturing performance.
+
+### Key Performance Indicators
+
+- **Production Volume** - Units produced by period
+- **Throughput** - Production rate and capacity utilization
+- **Yield Rate** - Good units as percentage of total production
+- **First Pass Yield** - Units passing without rework
+- **Scrap Rate** - Waste as percentage of production
+- **On-Time Completion** - Orders completed by due date
+- **Order Lead Time** - Average time from order to completion
+
+### Manufacturing Reports
+
+- **Production Schedule** - Planned production by date and resource
+- **Work in Process** - Open production orders and status
+- **Material Usage** - Component consumption vs. standard
+- **Labor Efficiency** - Actual vs. standard labor hours
+- **Equipment Utilization** - Machine usage and downtime
+- **Quality Metrics** - Defect rates and quality trends
+
+## Best Practices
+
+### BOM Management
+
+- Maintain accurate and current BOMs for all manufactured products
+- Use engineering change orders to control BOM modifications
+- Review BOMs quarterly for cost reduction opportunities
+- Implement effectivity dates for planned BOM changes
+- Document component substitutes for supply chain flexibility
+
+### Production Planning
+
+- Run MRP at least weekly to maintain current plans
+- Review MRP recommendations before creating orders
+- Set realistic lead times based on actual performance
+- Use safety stock strategically for critical components
+- Plan capacity before committing to customer delivery dates
+
+### Shop Floor Execution
+
+- Close completed production orders promptly
+- Report production quantities daily for accurate inventory
+- Investigate and document all scrap and rework
+- Use backflushing only for low-value bulk materials
+- Train operators on proper cost collector reporting
+
+### Cost Control
+
+- Review cost variances weekly and investigate significant deviations
+- Update standard costs at least annually
+- Track labor efficiency by work center
+- Analyze scrap trends to identify quality issues
+- Calculate total cost of quality including rework and inspection
+
+## Related Modules
+
+<CardGroup cols={2}>
+  <Card title="Inventory" icon="warehouse" href="/modules/inventory">
+    Manage raw materials and finished goods
+  </Card>
+  <Card title="Purchasing" icon="cart-shopping" href="/modules/purchasing">
+    Procure materials for production
+  </Card>
+  <Card title="Sales" icon="handshake" href="/modules/sales">
+    Fulfill make-to-order customer requests
+  </Card>
+  <Card title="Accounting" icon="calculator" href="/modules/accounting">
+    Track work in process and manufacturing costs
+  </Card>
+</CardGroup>

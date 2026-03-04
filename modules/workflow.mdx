@@ -1,0 +1,535 @@
+---
+title: "Workflow Module"
+description: "Business process automation and workflow management in iDempiere"
+---
+
+The Workflow module in iDempiere provides powerful business process automation capabilities, enabling you to model, execute, and monitor complex business processes across the entire organization.
+
+## Overview
+
+iDempiere's workflow engine supports both document-centric workflows (like approval processes) and activity-based workflows for managing business tasks. The system provides a graphical workflow editor, automatic task routing, and comprehensive process monitoring.
+
+<CardGroup cols={2}>
+  <Card title="Workflow Designer" icon="diagram-project" href="#workflow-design">
+    Visual workflow modeling with drag-and-drop editor
+  </Card>
+  <Card title="Document Workflows" icon="file-circle-check" href="#document-workflows">
+    Approval processes for business documents
+  </Card>
+  <Card title="Activity Management" icon="list-check" href="#workflow-activities">
+    Task assignment and activity tracking
+  </Card>
+  <Card title="Process Monitoring" icon="chart-gantt" href="#workflow-monitoring">
+    Real-time workflow status and performance
+  </Card>
+</CardGroup>
+
+## Workflow Concepts
+
+Understand the core components of iDempiere workflows.
+
+### Workflow Elements
+
+iDempiere workflows consist of several key components:
+
+- **Workflow** - The complete business process definition
+- **Nodes** - Individual steps or activities in the process
+- **Transitions** - Connections between nodes defining process flow
+- **Conditions** - Rules that control which path the workflow takes
+- **Responsibilities** - Define who can execute workflow activities
+- **Document Actions** - Integrate with document lifecycle (draft, complete, void, etc.)
+
+### Workflow Types
+
+- **Document Workflow** - Attached to business documents (orders, invoices, etc.)
+- **General Workflow** - Standalone processes not tied to specific documents
+- **Manufacturing Workflow** - Production routings and operations (see Manufacturing module)
+- **Approval Workflow** - Multi-level approval processes
+
+### Node Types
+
+- **Start Node** - Entry point for workflow execution
+- **Activity Node** - Manual task requiring user action
+- **Process Node** - Automated process or function execution
+- **Document Action Node** - Trigger document state changes
+- **Sub-Workflow Node** - Call another workflow as subprocess
+- **Route Node** - Decision point with multiple exit paths
+- **Email Node** - Send automated email notifications
+- **Wait Node** - Pause for specified time or event
+- **End Node** - Workflow completion point
+
+<Note>
+Workflows can have multiple start nodes (different entry points) and end nodes (different completion states).
+</Note>
+
+## Workflow Design
+
+Create and configure business process workflows.
+
+### Creating Workflows
+
+<Steps>
+  <Step title="Navigate to Workflow">
+    Go to **System Admin** > **General Rules** > **Workflow** and click **New**
+  </Step>
+  <Step title="Define Workflow Properties">
+    Enter workflow name, description, and workflow type (document or general)
+  </Step>
+  <Step title="Set Workflow Options">
+    Configure duration limits, validation type, and publication status
+  </Step>
+  <Step title="Add Workflow Nodes">
+    In the **Node** tab, create nodes for each workflow step
+  </Step>
+  <Step title="Define Node Actions">
+    Specify what happens at each node (process, activity, email, etc.)
+  </Step>
+  <Step title="Connect Nodes">
+    In the **Node Transition** tab, link nodes to define process flow
+  </Step>
+  <Step title="Add Conditions">
+    Define conditions that control which transitions are followed
+  </Step>
+  <Step title="Validate and Test">
+    Use the workflow validation tool to verify process logic
+  </Step>
+</Steps>
+
+### Node Configuration
+
+Each workflow node requires specific configuration:
+
+- **Node Name** - Descriptive name for the workflow step
+- **Action** - What action occurs (user choice, process, document action, etc.)
+- **Responsibility** - Who can execute this node
+- **Duration** - Expected time to complete this step
+- **Cost** - Optional cost tracking for the activity
+- **Wait Time** - Time to wait before node activation
+- **Join Element** - XOR (exclusive), AND (all paths), or OR (any path)
+- **Split Element** - XOR (single path) or AND (parallel paths)
+
+### Transition Logic
+
+Define how workflow moves between nodes:
+
+- **From Node** - Starting point of transition
+- **To Node** - Destination node
+- **Sequence** - Order when multiple transitions exist
+- **Condition** - Optional rule that must be true to follow this path
+- **Description** - Label for transition (shown in workflow diagram)
+
+<Tip>
+Use the workflow editor's graphical view to visualize your process flow. Complex workflows are easier to understand and maintain with clear visual representation.
+</Tip>
+
+## Document Workflows
+
+Attach workflows to business documents for approval and processing.
+
+### Document Workflow Integration
+
+Document workflows execute automatically when documents change state:
+
+<Steps>
+  <Step title="Create Document Workflow">
+    Design a workflow with document action nodes
+  </Step>
+  <Step title="Set Document Type">
+    In the workflow header, specify the document type (order, invoice, etc.)
+  </Step>
+  <Step title="Define Start Node">
+    Create start node that triggers when document is prepared/completed
+  </Step>
+  <Step title="Add Approval Steps">
+    Create activity nodes for each approval level required
+  </Step>
+  <Step title="Configure Document Actions">
+    Add nodes that complete, approve, or reject the document
+  </Step>
+  <Step title="Handle Exceptions">
+    Define paths for rejection, timeout, or error conditions
+  </Step>
+  <Step title="Activate Workflow">
+    Publish workflow to make it active for new documents
+  </Step>
+</Steps>
+
+### Common Document Workflows
+
+#### Purchase Order Approval
+
+<Steps>
+  <Step title="PO Created">
+    User creates and prepares purchase order
+  </Step>
+  <Step title="Automatic Routing">
+    Workflow routes to approver based on amount or department
+  </Step>
+  <Step title="Manager Approval">
+    Manager reviews and approves or rejects
+  </Step>
+  <Step title="Senior Approval" icon="optional">
+    For high-value orders, route to senior management
+  </Step>
+  <Step title="Complete Order">
+    Upon final approval, order is completed and sent to vendor
+  </Step>
+</Steps>
+
+#### Invoice Approval
+
+- **Match Validation** - Verify invoice matches PO and receipt
+- **Price Approval** - Review and approve any price variances
+- **Budget Check** - Validate against department budgets
+- **Accounting Review** - GL coding verification
+- **Payment Authorization** - Final approval for payment
+
+#### Expense Report Approval
+
+- **Employee Submission** - Employee submits expense report
+- **Manager Review** - Direct manager approves expenses
+- **Policy Compliance** - System validates against expense policy
+- **Accounting Processing** - Create AP invoice for reimbursement
+- **Payment** - Process payment to employee
+
+<Warning>
+Be careful when modifying active document workflows. Changes affect in-flight documents and may cause workflow failures. Test changes in development first.
+</Warning>
+
+## Workflow Activities
+
+Manage workflow tasks and activities.
+
+### Activity Assignment
+
+Workflows generate activities that require user action:
+
+- **Automatic Assignment** - System assigns based on responsibility rules
+- **Role-Based Assignment** - Assign to users with specific roles
+- **Department Assignment** - Route to users in specific department/organization
+- **Load Balancing** - Distribute among available users
+- **Manual Assignment** - Supervisor manually assigns tasks
+
+### Responsibility Configuration
+
+Define who can execute workflow activities:
+
+- **Role Responsibility** - Any user with specified role
+- **Organization Responsibility** - Users in specific organization
+- **Human Resource Responsibility** - Specific employee or department
+- **Dynamic Responsibility** - Determine at runtime (e.g., document creator's manager)
+
+### Activity Management
+
+Users manage their workflow activities:
+
+<Steps>
+  <Step title="View Activities">
+    Navigate to **Workflow** > **Activities** to see assigned tasks
+  </Step>
+  <Step title="Select Activity">
+    Choose activity to work on from the list
+  </Step>
+  <Step title="Review Context">
+    View related document and workflow history
+  </Step>
+  <Step title="Take Action">
+    Complete required action (approve, reject, or forward)
+  </Step>
+  <Step title="Add Comments">
+    Document reasoning and notes for audit trail
+  </Step>
+  <Step title="Complete Activity">
+    Workflow advances to next step based on action taken
+  </Step>
+</Steps>
+
+### Activity Features
+
+- **Priority Levels** - Urgent, high, normal, low prioritization
+- **Due Dates** - Calculated based on node duration settings
+- **Escalation** - Automatic reassignment if activity overdue
+- **Delegation** - Forward activity to another user
+- **Attachments** - Add supporting documents or notes
+- **History** - Complete audit trail of all actions
+
+<Tip>
+Configure email notifications for new activity assignments and overdue activities to ensure timely processing and prevent bottlenecks.
+</Tip>
+
+## Workflow Conditions
+
+Control workflow paths with conditional logic.
+
+### Condition Types
+
+- **SQL Conditions** - Evaluate SQL query results
+- **Document Status** - Check document state (drafted, completed, etc.)
+- **Amount Thresholds** - Route based on monetary values
+- **Date Comparisons** - Evaluate dates (due date, current date, etc.)
+- **User Attributes** - Check user role, organization, etc.
+- **Custom Logic** - Execute Java code for complex conditions
+
+### Defining Conditions
+
+<Steps>
+  <Step title="Create Workflow Node Next">
+    In the workflow editor, add transition between nodes
+  </Step>
+  <Step title="Add Transition Condition">
+    Create condition in the **Transition** tab
+  </Step>
+  <Step title="Select Condition Type">
+    Choose SQL, AND/OR logic, or custom script
+  </Step>
+  <Step title="Define Condition Logic">
+    Enter SQL query or script that returns true/false
+  </Step>
+  <Step title="Test Condition">
+    Validate condition syntax and test with sample data
+  </Step>
+</Steps>
+
+### Example Conditions
+
+**Amount-Based Routing:**
+```sql
+@GrandTotal@ > 10000
+```
+Routes to senior approval if order total exceeds $10,000
+
+**Department-Based Routing:**
+```sql
+@$Element_OO@ = 'Sales'
+```
+Routes to sales manager for sales organization documents
+
+**Date-Based Routing:**
+```sql
+DAYSBETWEEN(@Created@, @DateOrdered@) > 30
+```
+Flags orders created more than 30 days before order date
+
+<Note>
+Workflow variables are referenced with @VariableName@ syntax. Use system variables like @#AD_User_ID@ for current user or document fields like @DocumentNo@ for document number.
+</Note>
+
+## Process Automation
+
+Automate business processes with workflow nodes.
+
+### Automated Process Nodes
+
+Execute processes without user intervention:
+
+- **Standard Processes** - Run any iDempiere process
+- **Reports** - Generate and email reports
+- **Document Generation** - Create documents automatically
+- **Data Updates** - Modify records based on workflow state
+- **External Integration** - Call web services or external systems
+
+### Email Automation
+
+Send notifications and alerts:
+
+- **Email Templates** - Define message content with variables
+- **Recipient Rules** - Send to document creator, approver, or custom recipients
+- **Attachments** - Include documents, reports, or files
+- **Conditional Sending** - Email only when certain conditions are met
+
+### Scheduled Workflows
+
+Execute workflows on schedule:
+
+- **Time-Based Triggers** - Start workflows at specific times
+- **Recurring Execution** - Run daily, weekly, or monthly
+- **Batch Processing** - Process multiple records automatically
+- **Maintenance Tasks** - Automated system maintenance
+
+## Workflow Monitoring
+
+Track and analyze workflow performance.
+
+### Workflow Process View
+
+Monitor active and completed workflows:
+
+<Steps>
+  <Step title="Access Workflow Process">
+    Navigate to **Workflow** > **Workflow Process**
+  </Step>
+  <Step title="Filter Processes">
+    Filter by workflow, date range, or status
+  </Step>
+  <Step title="View Process Details">
+    Select process to see nodes executed and current state
+  </Step>
+  <Step title="Review Activities">
+    See all activities generated and their status
+  </Step>
+  <Step title="Analyze Performance">
+    Review actual duration vs. planned duration
+  </Step>
+</Steps>
+
+### Performance Metrics
+
+<CardGroup cols={2}>
+  <Card title="Cycle Time" icon="clock">
+    Average time from workflow start to completion
+  </Card>
+  <Card title="Bottlenecks" icon="triangle-exclamation">
+    Identify nodes with longest wait times
+  </Card>
+  <Card title="Completion Rate" icon="percent">
+    Percentage of workflows completing successfully
+  </Card>
+  <Card title="Exception Rate" icon="exclamation-circle">
+    Workflows that fail or require manual intervention
+  </Card>
+</CardGroup>
+
+### Workflow Reports
+
+- **Active Workflows** - Currently executing processes
+- **Workflow Statistics** - Volume and performance by workflow type
+- **Activity Aging** - Overdue activities requiring attention
+- **User Workload** - Activity distribution across users
+- **Escalation Report** - Activities requiring escalation
+- **Workflow Audit** - Complete history for compliance
+
+## Advanced Workflow Features
+
+### Parallel Processing
+
+Execute multiple paths simultaneously:
+
+- **Split AND** - Create parallel branches that all execute
+- **Join AND** - Wait for all parallel branches to complete
+- **Concurrent Activities** - Multiple users work simultaneously
+- **Synchronization** - Merge parallel paths before continuing
+
+### Sub-Workflows
+
+Reuse workflow components:
+
+- **Modular Design** - Break complex workflows into reusable pieces
+- **Sub-Workflow Calls** - Invoke other workflows as subroutines
+- **Parameter Passing** - Pass context to sub-workflows
+- **Return Values** - Get results from sub-workflow execution
+
+### Dynamic Workflows
+
+Adapt workflow at runtime:
+
+- **Dynamic Node Assignment** - Calculate responsibility at execution time
+- **Dynamic Routing** - Determine next node based on runtime conditions
+- **Workflow Variables** - Store and pass data between nodes
+- **Event-Driven Execution** - React to external events or data changes
+
+### Workflow Versioning
+
+Manage workflow changes over time:
+
+- **Version Control** - Maintain multiple workflow versions
+- **Effective Dating** - Schedule workflow changes for future dates
+- **In-Flight Processes** - Handle active processes during workflow updates
+- **Rollback** - Revert to previous workflow version if needed
+
+<Tip>
+Use sub-workflows for common approval patterns (e.g., manager approval) to maintain consistency and simplify updates across multiple workflows.
+</Tip>
+
+## Document Lifecycle Integration
+
+iDempiere documents follow a state machine model.
+
+### Document States
+
+- **Drafted** - Initial creation, can be modified
+- **In Progress** - Document being processed
+- **Completed** - Finalized, creates accounting entries
+- **Waiting** - Awaiting approval or external event
+- **Approved** - Approved but not yet completed
+- **Not Approved** - Rejected in approval process
+- **Voided** - Cancelled, creates reversal entries
+- **Closed** - Fully processed, archived
+- **Reversed** - Accounting reversal of completed document
+- **Invalid** - Failed validation
+
+### Document Actions
+
+Workflows can trigger these document actions:
+
+- **Prepare** - Validate and prepare for completion
+- **Complete** - Finalize document and post transactions
+- **Approve** - Move to approved state
+- **Reject** - Move to not approved state
+- **Void** - Cancel document
+- **Close** - Close completed document
+- **Reverse - Correct** - Correct and reverse
+- **Reverse - Accrual** - Reverse with accrual
+- **Re-Activate** - Return to draft state
+
+<Warning>
+Not all document actions are available in all states. The workflow engine respects document action rules and will fail if an invalid action is attempted.
+</Warning>
+
+## Best Practices
+
+### Workflow Design
+
+- Keep workflows simple and focused on single business process
+- Use clear, descriptive names for workflows and nodes
+- Document workflow purpose and business rules
+- Limit workflow complexity - break complex processes into sub-workflows
+- Test workflows thoroughly in development before production deployment
+
+### Performance Optimization
+
+- Minimize number of nodes for better performance
+- Use SQL conditions efficiently to avoid expensive queries
+- Avoid excessive parallel branches that create many activities
+- Set realistic duration estimates for capacity planning
+- Clean up completed workflow processes periodically
+
+### Responsibility Assignment
+
+- Use role-based assignment for flexibility
+- Avoid assigning to specific users (use roles or positions)
+- Configure backup assignments for vacations/absences
+- Balance workload across team members
+- Implement escalation for overdue activities
+
+### Monitoring and Maintenance
+
+- Review workflow performance metrics monthly
+- Identify and address bottlenecks promptly
+- Monitor escalation rates and adjust timeouts
+- Validate workflows after system upgrades
+- Archive old workflow processes to maintain performance
+
+### Security and Compliance
+
+- Use workflows to enforce approval policies
+- Maintain complete audit trail of all actions
+- Restrict workflow modification to authorized users
+- Document workflow logic for audit and compliance
+- Test disaster recovery for in-flight workflows
+
+## Related Modules
+
+<CardGroup cols={2}>
+  <Card title="Purchasing" icon="cart-shopping" href="/modules/purchasing">
+    Purchase order approval workflows
+  </Card>
+  <Card title="Sales" icon="handshake" href="/modules/sales">
+    Sales order processing workflows
+  </Card>
+  <Card title="Manufacturing" icon="industry" href="/modules/manufacturing">
+    Production workflows and routing
+  </Card>
+  <Card title="Accounting" icon="calculator" href="/modules/accounting">
+    Journal approval and period close workflows
+  </Card>
+</CardGroup>

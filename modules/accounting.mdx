@@ -1,0 +1,367 @@
+---
+title: "Accounting Module"
+description: "Comprehensive financial accounting and general ledger management in iDempiere"
+---
+
+The Accounting module in iDempiere provides a complete financial accounting system with multi-currency support, automated posting, and comprehensive reporting capabilities.
+
+## Overview
+
+iDempiere's accounting module is built on a sophisticated double-entry accounting system that automatically posts financial transactions from various business documents. The system supports multiple accounting schemas, currencies, and fiscal periods, making it suitable for complex multinational operations.
+
+<CardGroup cols={2}>
+  <Card title="General Ledger" icon="book" href="#general-ledger">
+    Manage chart of accounts, journal entries, and account balances
+  </Card>
+  <Card title="Accounts Payable" icon="file-invoice-dollar" href="#accounts-payable">
+    Track vendor invoices, payments, and outstanding balances
+  </Card>
+  <Card title="Accounts Receivable" icon="money-bill-wave" href="#accounts-receivable">
+    Manage customer invoices, receipts, and aging reports
+  </Card>
+  <Card title="Financial Reporting" icon="chart-line" href="#financial-reporting">
+    Generate balance sheets, income statements, and custom reports
+  </Card>
+</CardGroup>
+
+## General Ledger
+
+The General Ledger (GL) is the core of the accounting system, maintaining all financial transactions in a structured chart of accounts.
+
+### Chart of Accounts
+
+Define your organization's financial structure with a flexible chart of accounts that supports:
+
+- **Natural accounts** - Revenue, expense, asset, liability, and equity accounts
+- **Account hierarchies** - Parent-child relationships for reporting and consolidation
+- **Account combinations** - Multi-dimensional accounting with organization, product, and custom segments
+- **Default accounts** - Automated account assignment for common transactions
+
+### Journal Entries
+
+Create manual journal entries for adjustments, accruals, and corrections:
+
+<Steps>
+  <Step title="Navigate to GL Journal">
+    Go to **Accounting** > **General Ledger** > **GL Journal**
+  </Step>
+  <Step title="Create New Journal Batch">
+    Click **New** and select the accounting schema and document type
+  </Step>
+  <Step title="Add Journal Lines">
+    Enter debit and credit lines ensuring the batch balances to zero
+  </Step>
+  <Step title="Complete and Post">
+    Complete the journal to validate and post entries to the general ledger
+  </Step>
+</Steps>
+
+<Note>
+All journal batches must balance (total debits = total credits) before they can be completed and posted.
+</Note>
+
+## Automated Document Posting
+
+iDempiere automatically creates accounting entries when business documents are completed. The posting engine handles:
+
+### Supported Document Types
+
+- **Invoices** (AR/AP) - Revenue/expense recognition and receivables/payables
+- **Payments** - Cash/bank account movements and clearing accounts
+- **Bank Statements** - Reconciliation and bank account updates
+- **Inventory Movements** - Cost of goods sold and inventory valuation
+- **Purchase/Sales Orders** - Commitment accounting (optional)
+- **Cash Journal** - Petty cash and daily cash operations
+- **Asset Transactions** - Fixed asset additions, depreciation, and disposals
+
+### Posting Workflow
+
+<Steps>
+  <Step title="Document Completion">
+    When a document is completed, the posting process is triggered automatically
+  </Step>
+  <Step title="Fact Generation">
+    The document posting class (e.g., `Doc_Invoice.java`) generates accounting facts based on document type and accounting schema
+  </Step>
+  <Step title="Account Resolution">
+    Default accounts are resolved based on document context (product category, business partner group, charge, etc.)
+  </Step>
+  <Step title="Fact Posting">
+    Accounting facts are written to the `Fact_Acct` table with proper debit/credit amounts
+  </Step>
+  <Step title="Balance Update">
+    Account balances are updated in real-time for immediate reporting
+  </Step>
+</Steps>
+
+## Accounts Payable
+
+Manage all vendor-related financial transactions including invoices, credit memos, and payments.
+
+### Vendor Invoice Processing
+
+<Steps>
+  <Step title="Create Invoice">
+    Navigate to **Purchasing** > **Invoice (Vendor)** and create a new invoice from a purchase order or manually
+  </Step>
+  <Step title="Enter Invoice Details">
+    Specify vendor, invoice date, due date, and line items with amounts
+  </Step>
+  <Step title="Match to Receipt" icon="optional">
+    For purchase orders, match invoice lines to receipt quantities using the Match Invoice process
+  </Step>
+  <Step title="Complete Invoice">
+    Complete the invoice to post payable entries and make it available for payment
+  </Step>
+</Steps>
+
+### Payment Processing
+
+Process vendor payments individually or in batches:
+
+- **Manual Payments** - Create individual payment records for checks or bank transfers
+- **Payment Selection** - Use the Payment Selection process to batch multiple invoices
+- **Payment Print/Export** - Generate check prints or export payment files for banking systems
+- **Payment Allocation** - Automatically allocate payments to open invoices
+
+<Tip>
+Use the Payment Selection process to optimize cash flow by selecting invoices based on due date, discount terms, and available cash.
+</Tip>
+
+## Accounts Receivable
+
+Track customer invoices, payments, and outstanding balances with comprehensive aging reports.
+
+### Customer Invoice Management
+
+Customer invoices are typically generated from sales orders or shipments:
+
+- **Generate from Order** - Create invoices directly from completed sales orders
+- **Generate from Shipment** - Invoice based on delivered goods
+- **Manual Invoices** - Create invoices for services or ad-hoc charges
+- **Recurring Invoices** - Automate subscription or periodic billing
+
+### Payment Receipt
+
+Record customer payments and allocate them to open invoices:
+
+<Steps>
+  <Step title="Create Payment">
+    Navigate to **Sales** > **Payment** and create a new payment record
+  </Step>
+  <Step title="Enter Payment Details">
+    Specify customer, payment method, amount, and bank account
+  </Step>
+  <Step title="Allocate to Invoices">
+    Use the **Allocate Payment** button to distribute the payment across open invoices
+  </Step>
+  <Step title="Complete Payment">
+    Complete the payment to post cash receipt entries and update invoice balances
+  </Step>
+</Steps>
+
+### Credit Management
+
+iDempiere includes built-in credit management features:
+
+- **Credit Limits** - Set customer-specific credit limits
+- **Credit Status** - Automatic credit checking during order processing
+- **Aging Reports** - Track overdue balances by aging period
+- **Credit Hold** - Prevent new orders for customers exceeding credit terms
+
+## Multi-Currency Accounting
+
+iDempiere supports sophisticated multi-currency operations:
+
+### Currency Features
+
+- **Multiple Currencies** - Transact in any defined currency
+- **Accounting Currency** - Maintain books in a base currency
+- **Conversion Rates** - Define exchange rates by date and conversion type
+- **Realized Gains/Losses** - Automatically calculate when payments are received in different currencies
+- **Unrealized Gains/Losses** - Revalue foreign currency balances at period end
+
+### Conversion Rate Management
+
+Maintain current and historical exchange rates:
+
+- **Rate Types** - Define multiple rate types (spot, average, company rate)
+- **Date-Effective Rates** - Specify valid date ranges for each rate
+- **Automatic Rate Lookup** - System automatically uses the appropriate rate based on transaction date
+
+## Accounting Schema
+
+Accounting schemas define how transactions are recorded and reported:
+
+### Schema Configuration
+
+- **Primary Accounting Schema** - Required for all organizations
+- **Secondary Schemas** - Optional additional accounting perspectives (GAAP, IFRS, tax basis)
+- **Currency Settings** - Base currency and conversion handling
+- **Costing Methods** - Standard, Average, FIFO, LIFO, or Last PO Price
+- **Posting Control** - Commitment accounting, suspense accounts, and posting rules
+
+### Default Accounts
+
+Define automatic account assignments at multiple levels:
+
+- **GL Category** - Default accounts for product categories
+- **Product** - Product-specific account overrides
+- **Business Partner Group** - Customer/vendor group defaults
+- **Charge** - Accounts for service charges and fees
+- **Warehouse** - Location-specific inventory accounts
+
+<Note>
+The system searches for accounts in order of specificity: Product > Product Category > Accounting Schema default. Always configure at least the schema-level defaults.
+</Note>
+
+## Financial Reporting
+
+Generate comprehensive financial reports for management and compliance:
+
+### Standard Reports
+
+<CardGroup cols={2}>
+  <Card title="Trial Balance" icon="scale-balanced">
+    Summary of all account balances for a specific period
+  </Card>
+  <Card title="Balance Sheet" icon="building-columns">
+    Assets, liabilities, and equity at a point in time
+  </Card>
+  <Card title="Income Statement" icon="chart-line">
+    Revenue and expenses for a period with profit/loss
+  </Card>
+  <Card title="Account Details" icon="list">
+    Transaction-level detail for any account or range
+  </Card>
+</CardGroup>
+
+### Report Features
+
+- **Multi-Period Comparison** - Compare current period to prior periods
+- **Budget vs. Actual** - Variance analysis against budgeted amounts
+- **Multi-Schema Reporting** - Report on multiple accounting schemas simultaneously
+- **Custom Report Structures** - Define custom financial statement layouts
+- **Drill-Down** - Click through from summary to transaction detail
+
+## Period Management
+
+Control financial periods for proper period-end close:
+
+<Steps>
+  <Step title="Open Period">
+    Periods must be open to post transactions
+  </Step>
+  <Step title="Post Transactions">
+    All business activity posts to the current open period
+  </Step>
+  <Step title="Review and Reconcile">
+    Run reports and perform reconciliations before closing
+  </Step>
+  <Step title="Close Period">
+    Close the period to prevent backdated transactions
+  </Step>
+  <Step title="Permanent Close">
+    Permanently close periods after audit or regulatory deadlines
+  </Step>
+</Steps>
+
+<Warning>
+Once a period is permanently closed, it cannot be reopened. Ensure all corrections are complete before permanent close.
+</Warning>
+
+## Tax Management
+
+iDempiere provides flexible tax calculation and reporting:
+
+### Tax Features
+
+- **Multiple Tax Categories** - Define different tax types (VAT, sales tax, withholding)
+- **Rate-Based Taxes** - Percentage-based tax calculations
+- **Tax Exemptions** - Customer or product-based exemptions
+- **Tax Reports** - Generate tax liability and payment reports
+- **Multi-Jurisdiction** - Support for federal, state, and local taxes
+
+### Tax Posting
+
+Taxes post automatically with their source documents:
+
+- **Tax Receivable** - Sales tax collected from customers
+- **Tax Payable** - Purchase tax owed to authorities
+- **Tax Expense** - Non-recoverable tax expenses
+- **Reverse Charge** - EU/VAT reverse charge mechanism
+
+## Cost Accounting
+
+Track product costs and cost of goods sold:
+
+### Costing Methods
+
+iDempiere supports multiple costing methods:
+
+- **Standard Costing** - Fixed predetermined costs
+- **Average Costing** - Moving average based on receipts
+- **FIFO** - First-in, first-out cost layers
+- **LIFO** - Last-in, first-out cost layers
+- **Last PO Price** - Cost based on most recent purchase order
+
+### Cost Elements
+
+Define what comprises product cost:
+
+- **Material Costs** - Raw material and component costs
+- **Overhead** - Allocated overhead expenses
+- **Freight** - Landed cost allocation
+- **Burden** - Additional cost elements (labor, setup, etc.)
+
+<Tip>
+For manufacturing operations, use Standard Costing to establish baseline costs, then use cost collectors to track actual costs and variances.
+</Tip>
+
+## Best Practices
+
+### Account Setup
+
+- Create a logical chart of accounts structure that mirrors your reporting needs
+- Use account hierarchies to enable summary reporting
+- Configure all default accounts at the schema level before going live
+- Test posting for all document types in a development environment
+
+### Period Close
+
+- Establish a monthly close calendar with clear deadlines
+- Perform bank reconciliations before period close
+- Review all suspense and clearing accounts
+- Run standard reports to verify balances before closing
+- Document all manual adjustments with supporting evidence
+
+### Multi-Currency
+
+- Update exchange rates daily or at least weekly
+- Reconcile foreign currency accounts regularly
+- Run revaluation at month-end for balance sheet accuracy
+- Review realized gains/losses on payment posting
+
+### Audit Trail
+
+- Never delete posted transactions - use reversals instead
+- Use document sequences to ensure transaction numbering integrity
+- Enable change logging for sensitive accounts
+- Restrict accounting configuration to authorized users only
+
+## Related Modules
+
+<CardGroup cols={2}>
+  <Card title="Purchasing" icon="cart-shopping" href="/modules/purchasing">
+    Vendor invoices and purchase-related postings
+  </Card>
+  <Card title="Sales" icon="handshake" href="/modules/sales">
+    Customer invoices and sales-related revenue
+  </Card>
+  <Card title="Inventory" icon="boxes-stacked" href="/modules/inventory">
+    Inventory costing and COGS calculations
+  </Card>
+  <Card title="Manufacturing" icon="industry" href="/modules/manufacturing">
+    Work in process and manufacturing cost accounting
+  </Card>
+</CardGroup>

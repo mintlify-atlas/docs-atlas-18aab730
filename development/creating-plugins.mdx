@@ -1,0 +1,460 @@
+---
+title: Creating Plugins
+description: Build OSGi plugins to extend iDempiere without modifying core code
+---
+
+iDempiere uses OSGi (Open Services Gateway initiative) for its modular plugin architecture. Plugins allow you to extend functionality while keeping your code separate from the core.
+
+## Plugin Types
+
+iDempiere supports several plugin types:
+
+- **Callout Plugins** - Field-level business logic triggers
+- **Process Plugins** - Batch processes and reports
+- **Model Validator Plugins** - Document and model event handlers
+- **UI Extensions** - Custom windows and forms
+- **Web Service Extensions** - Custom REST/SOAP endpoints
+
+## Creating Your First Plugin
+
+<Steps>
+
+<Step title="Create plugin directory structure">
+
+Create a new directory in the iDempiere source root:
+
+```bash
+cd idempiere
+mkdir com.yourcompany.customplugin
+cd com.yourcompany.customplugin
+```
+
+Create the standard OSGi structure:
+
+```bash
+mkdir -p src/com/yourcompany/customplugin
+mkdir -p META-INF
+mkdir -p OSGI-INF
+```
+
+</Step>
+
+<Step title="Create MANIFEST.MF">
+
+Create `META-INF/MANIFEST.MF` with your bundle metadata:
+
+```manifest META-INF/MANIFEST.MF
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Custom Plugin
+Bundle-SymbolicName: com.yourcompany.customplugin
+Bundle-Version: 1.0.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version>=17))"
+Require-Bundle: org.adempiere.base;bundle-version="0.0.0"
+Eclipse-RegisterBuddy: org.adempiere.base
+Service-Component: OSGI-INF/*.xml
+Bundle-ActivationPolicy: lazy
+Export-Package: com.yourcompany.customplugin
+Bundle-ClassPath: .
+Bundle-Vendor: Your Company
+Import-Package: org.osgi.framework,
+ org.osgi.service.component.annotations;version="1.5.1"
+```
+
+**Key sections explained:**
+
+- `Bundle-SymbolicName` - Unique identifier for your plugin
+- `Require-Bundle` - Dependencies (org.adempiere.base is the core)
+- `Service-Component` - Points to OSGi Declarative Services configuration
+- `Export-Package` - Makes your classes available to other plugins
+
+</Step>
+
+<Step title="Create pom.xml">
+
+Create `pom.xml` for Maven build integration:
+
+```xml pom.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    
+    <parent>
+        <groupId>org.idempiere</groupId>
+        <artifactId>org.idempiere.parent</artifactId>
+        <version>${revision}</version>
+        <relativePath>../org.idempiere.parent/pom.xml</relativePath>
+    </parent>
+    
+    <artifactId>com.yourcompany.customplugin</artifactId>
+    <packaging>eclipse-plugin</packaging>
+</project>
+```
+
+</Step>
+
+<Step title="Create build.properties">
+
+Create `build.properties` to configure the build:
+
+```properties build.properties
+bin.includes = META-INF/,\
+               OSGI-INF/,\
+               .
+output.. = target/classes/
+source.. = src/
+jre.compilation.profile = JavaSE-17
+```
+
+</Step>
+
+</Steps>
+
+## Plugin Example: Custom Process
+
+Let's create a simple process plugin that sends email notifications.
+
+### 1. Create the Process Class
+
+```java src/com/yourcompany/customplugin/SendCustomNotification.java
+package com.yourcompany.customplugin;
+
+import java.util.Properties;
+import org.compiere.process.ProcessInfoParameter;
+import org.compiere.process.SvrProcess;
+import org.compiere.util.EMail;
+import org.compiere.model.MClient;
+import org.compiere.model.MUser;
+
+/**
+ * Custom Notification Process
+ * Sends email notifications to users
+ */
+@org.adempiere.base.annotation.Process
+public class SendCustomNotification extends SvrProcess {
+    
+    private String p_EmailTo = null;
+    private String p_Subject = null;
+    private String p_Message = null;
+    
+    /**
+     * Prepare - Get parameters
+     */
+    @Override
+    protected void prepare() {
+        ProcessInfoParameter[] params = getParameter();
+        for (ProcessInfoParameter param : params) {
+            String name = param.getParameterName();
+            if ("EmailTo".equals(name)) {
+                p_EmailTo = (String) param.getParameter();
+            } else if ("Subject".equals(name)) {
+                p_Subject = (String) param.getParameter();
+            } else if ("Message".equals(name)) {
+                p_Message = (String) param.getParameter();
+            }
+        }
+    }
+    
+    /**
+     * Execute process
+     */
+    @Override
+    protected String doIt() throws Exception {
+        log.info("Sending notification to: " + p_EmailTo);
+        
+        // Get client for email configuration
+        MClient client = MClient.get(getCtx());
+        
+        // Create and send email
+        EMail email = client.createEMail(p_EmailTo, p_Subject, p_Message);
+        
+        if (email == null) {
+            throw new Exception("Could not create email - check email configuration");
+        }
+        
+        String status = email.send();
+        
+        if (EMail.SENT_OK.equals(status)) {
+            return "Email sent successfully to " + p_EmailTo;
+        } else {
+            throw new Exception("Email failed: " + status);
+        }
+    }
+}
+```
+
+### 2. Register the Process
+
+<Note>
+Processes using the `@org.adempiere.base.annotation.Process` annotation are automatically discovered by iDempiere's process factory. No plugin.xml registration is needed.
+</Note>
+
+### 3. Create Process in Application Dictionary
+
+Execute in the database to register your process:
+
+```sql
+INSERT INTO AD_Process (
+    AD_Process_ID, AD_Client_ID, AD_Org_ID,
+    Name, Value, Description, Help,
+    AccessLevel, EntityType, Statistic_Count,
+    Statistic_Seconds, Classname, IsBetaFunctionality
+) VALUES (
+    200001, 0, 0,
+    'Send Custom Notification', 'CustomNotification',
+    'Send email notifications to users', null,
+    '3', 'U', 0,
+    0, 'com.yourcompany.customplugin.SendCustomNotification', 'N'
+);
+
+-- Add process parameters
+INSERT INTO AD_Process_Para (
+    AD_Process_Para_ID, AD_Process_ID,
+    Name, ColumnName, FieldLength,
+    AD_Reference_ID, IsMandatory, SeqNo, EntityType
+) VALUES (
+    200101, 200001,
+    'Email To', 'EmailTo', 255,
+    10, 'Y', 10, 'U'  -- Reference 10 = String
+);
+
+INSERT INTO AD_Process_Para (
+    AD_Process_Para_ID, AD_Process_ID,
+    Name, ColumnName, FieldLength,
+    AD_Reference_ID, IsMandatory, SeqNo, EntityType
+) VALUES (
+    200102, 200001,
+    'Subject', 'Subject', 255,
+    10, 'Y', 20, 'U'
+);
+
+INSERT INTO AD_Process_Para (
+    AD_Process_Para_ID, AD_Process_ID,
+    Name, ColumnName, FieldLength,
+    AD_Reference_ID, IsMandatory, SeqNo, EntityType
+) VALUES (
+    200103, 200001,
+    'Message', 'Message', 2000,
+    14, 'Y', 30, 'U'  -- Reference 14 = Text
+);
+```
+
+## Alternative: Using Extension Points
+
+For plugins that need explicit registration (like callouts and model validators), use extension points.
+
+### Process with Extension Point
+
+Create `plugin.xml` in your plugin root:
+
+```xml plugin.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+    <extension
+        id="com.yourcompany.customplugin.sendNotification"
+        name="Custom Notification Process"
+        point="org.adempiere.base.Process">
+        <process
+            class="com.yourcompany.customplugin.SendCustomNotification">
+        </process>
+    </extension>
+</plugin>
+```
+
+Then reference it in AD_Process:
+
+```sql
+UPDATE AD_Process 
+SET Classname = 'com.yourcompany.customplugin.sendNotification'
+WHERE AD_Process_ID = 200001;
+```
+
+## OSGi Declarative Services
+
+For services that need to be injected, use OSGi Declarative Services.
+
+### Service Interface
+
+```java src/com/yourcompany/customplugin/INotificationService.java
+package com.yourcompany.customplugin;
+
+public interface INotificationService {
+    boolean sendNotification(String to, String subject, String message);
+}
+```
+
+### Service Implementation
+
+```java src/com/yourcompany/customplugin/NotificationServiceImpl.java
+package com.yourcompany.customplugin;
+
+import org.osgi.service.component.annotations.Component;
+import org.compiere.util.EMail;
+import org.compiere.model.MClient;
+import org.compiere.util.Env;
+
+@Component(
+    immediate = true,
+    service = INotificationService.class,
+    property = {"service.ranking:Integer=0"}
+)
+public class NotificationServiceImpl implements INotificationService {
+    
+    @Override
+    public boolean sendNotification(String to, String subject, String message) {
+        try {
+            MClient client = MClient.get(Env.getCtx());
+            EMail email = client.createEMail(to, subject, message);
+            String status = email.send();
+            return EMail.SENT_OK.equals(status);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+}
+```
+
+### Service Component XML
+
+Create `OSGI-INF/NotificationServiceImpl.xml`:
+
+```xml OSGI-INF/NotificationServiceImpl.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0" 
+    immediate="true" 
+    name="com.yourcompany.customplugin.NotificationServiceImpl">
+    <property name="service.ranking" type="Integer" value="0"/>
+    <service>
+        <provide interface="com.yourcompany.customplugin.INotificationService"/>
+    </service>
+    <implementation class="com.yourcompany.customplugin.NotificationServiceImpl"/>
+</scr:component>
+```
+
+## Building Your Plugin
+
+<Steps>
+
+<Step title="Add to parent pom">
+
+Edit the root `pom.xml` to include your plugin in the modules section:
+
+```xml
+<modules>
+    <!-- existing modules -->
+    <module>com.yourcompany.customplugin</module>
+</modules>
+```
+
+</Step>
+
+<Step title="Build with Maven">
+
+```bash
+cd idempiere
+mvn clean verify -pl com.yourcompany.customplugin -am
+```
+
+The `-pl` flag builds only your plugin, `-am` includes dependencies.
+
+</Step>
+
+<Step title="Deploy the plugin">
+
+Your compiled plugin JAR will be in:
+
+```
+com.yourcompany.customplugin/target/com.yourcompany.customplugin-1.0.0-SNAPSHOT.jar
+```
+
+Copy this to the `plugins/` directory of your iDempiere installation.
+
+</Step>
+
+</Steps>
+
+## Plugin Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Use unique package names">
+Always use your company domain in reverse (e.g., `com.yourcompany.plugin`) to avoid namespace conflicts.
+</Accordion>
+
+<Accordion title="Set EntityType = 'U' for customizations">
+In the Application Dictionary, use EntityType 'U' (User) for your custom entities. This prevents conflicts with core updates.
+</Accordion>
+
+<Accordion title="Version your plugins">
+Use semantic versioning (e.g., 1.0.0) and update the version in MANIFEST.MF when releasing changes.
+</Accordion>
+
+<Accordion title="Include migration scripts">
+Package your Application Dictionary changes as SQL migration scripts in `migration/` directory.
+</Accordion>
+
+<Accordion title="Document your extensions">
+Maintain README.md documenting what your plugin does, dependencies, and installation steps.
+</Accordion>
+
+</AccordionGroup>
+
+## Testing Your Plugin
+
+### Unit Testing
+
+Create test classes in `src-test/`:
+
+```java src-test/com/yourcompany/customplugin/NotificationTest.java
+package com.yourcompany.customplugin;
+
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+public class NotificationTest {
+    
+    @Test
+    public void testNotificationService() {
+        INotificationService service = new NotificationServiceImpl();
+        // Add test logic
+        assertNotNull(service);
+    }
+}
+```
+
+### Integration Testing
+
+Test in a development iDempiere instance:
+
+1. Deploy your plugin
+2. Restart the server
+3. Log in and run your process from the menu
+4. Check logs in `log/` directory
+
+<Tip>
+Enable debug logging by editing `log4j2.xml` and setting your package to DEBUG level.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Callouts" icon="phone" href="/development/callouts">
+  Implement field-level triggers
+</Card>
+
+<Card title="Processes" icon="gears" href="/development/processes">
+  Deep dive into process development
+</Card>
+
+<Card title="Model Validators" icon="check-double" href="/development/model-validators">
+  Handle document and model events
+</Card>
+
+</CardGroup>

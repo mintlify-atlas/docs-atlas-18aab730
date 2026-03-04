@@ -1,0 +1,820 @@
+---
+title: REST API
+description: RESTful web services with JSON and XML support for modern integrations
+icon: code
+---
+
+iDempiere's REST API provides a modern, lightweight interface for integration. All SOAP services are automatically exposed as REST endpoints with support for both JSON and XML payloads.
+
+## Base URL
+
+```
+https://your-server:8443/ADInterface/services/rest
+```
+
+## Content Types
+
+The REST API supports both JSON and XML:
+
+```http
+Content-Type: application/json
+Accept: application/json
+```
+
+or
+
+```http
+Content-Type: application/xml
+Accept: application/xml
+```
+
+<Info>
+  JSON is recommended for most modern applications due to smaller payload size and easier parsing.
+</Info>
+
+## ModelADService Endpoints
+
+All ModelADService endpoints are available under `/rest/model_adservice/`.
+
+### Create Data
+
+Create a new record in any iDempiere table.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://localhost:8443/ADInterface/services/rest/model_adservice/create_data \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "ModelCRUDRequest": {
+      "ModelCRUD": {
+        "serviceType": "CreateBPartner",
+        "TableName": "C_BPartner",
+        "RecordID": 0,
+        "Action": "Create",
+        "DataRow": {
+          "field": [
+            {
+              "@column": "Value",
+              "val": "CUST-001"
+            },
+            {
+              "@column": "Name",
+              "val": "New Customer Inc."
+            },
+            {
+              "@column": "IsCustomer",
+              "val": "Y"
+            },
+            {
+              "@column": "C_BP_Group_ID",
+              "val": "103"
+            }
+          ]
+        }
+      },
+      "ADLoginRequest": {
+        "user": "WebService",
+        "pass": "WebService",
+        "lang": "en_US",
+        "ClientID": 11,
+        "RoleID": 50004,
+        "OrgID": 11,
+        "WarehouseID": 103,
+        "stage": 9
+      }
+    }
+  }'
+```
+
+```javascript JavaScript/Node.js
+const response = await fetch(
+  'https://localhost:8443/ADInterface/services/rest/model_adservice/create_data',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      ModelCRUDRequest: {
+        ModelCRUD: {
+          serviceType: 'CreateBPartner',
+          TableName: 'C_BPartner',
+          RecordID: 0,
+          Action: 'Create',
+          DataRow: {
+            field: [
+              { '@column': 'Value', val: 'CUST-001' },
+              { '@column': 'Name', val: 'New Customer Inc.' },
+              { '@column': 'IsCustomer', val: 'Y' },
+              { '@column': 'C_BP_Group_ID', val: '103' }
+            ]
+          }
+        },
+        ADLoginRequest: {
+          user: 'WebService',
+          pass: 'WebService',
+          lang: 'en_US',
+          ClientID: 11,
+          RoleID: 50004,
+          OrgID: 11,
+          WarehouseID: 103,
+          stage: 9
+        }
+      }
+    })
+  }
+);
+
+const data = await response.json();
+console.log('Created Record ID:', data.StandardResponse.RecordID);
+```
+
+```python Python
+import requests
+import json
+
+url = 'https://localhost:8443/ADInterface/services/rest/model_adservice/create_data'
+
+payload = {
+    'ModelCRUDRequest': {
+        'ModelCRUD': {
+            'serviceType': 'CreateBPartner',
+            'TableName': 'C_BPartner',
+            'RecordID': 0,
+            'Action': 'Create',
+            'DataRow': {
+                'field': [
+                    {'@column': 'Value', 'val': 'CUST-001'},
+                    {'@column': 'Name', 'val': 'New Customer Inc.'},
+                    {'@column': 'IsCustomer', 'val': 'Y'},
+                    {'@column': 'C_BP_Group_ID', 'val': '103'}
+                ]
+            }
+        },
+        'ADLoginRequest': {
+            'user': 'WebService',
+            'pass': 'WebService',
+            'lang': 'en_US',
+            'ClientID': 11,
+            'RoleID': 50004,
+            'OrgID': 11,
+            'WarehouseID': 103,
+            'stage': 9
+        }
+    }
+}
+
+headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+}
+
+response = requests.post(url, json=payload, headers=headers, verify=False)
+result = response.json()
+
+if not result['StandardResponse']['IsError']:
+    print(f"Created Record ID: {result['StandardResponse']['RecordID']}")
+else:
+    print(f"Error: {result['StandardResponse']['Error']}")
+```
+</CodeGroup>
+
+<ParamField path="serviceType" type="string" required>
+  The configured web service type name (e.g., "CreateBPartner")
+</ParamField>
+
+<ParamField path="TableName" type="string" required>
+  The database table name (e.g., "C_BPartner", "C_Order")
+</ParamField>
+
+<ParamField path="RecordID" type="integer" required>
+  Set to 0 for create operations
+</ParamField>
+
+<ParamField path="Action" type="string" required>
+  Must be "Create"
+</ParamField>
+
+<ParamField path="DataRow.field" type="array" required>
+  Array of field objects with column name and value
+</ParamField>
+
+<ResponseField name="StandardResponse.RecordID" type="integer">
+  The ID of the newly created record
+</ResponseField>
+
+<ResponseField name="StandardResponse.IsError" type="boolean">
+  Whether the operation failed
+</ResponseField>
+
+<ResponseField name="StandardResponse.Error" type="string">
+  Error message if IsError is true
+</ResponseField>
+
+### Read Data
+
+Read a single record by ID.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://localhost:8443/ADInterface/services/rest/model_adservice/read_data \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "ModelCRUDRequest": {
+      "ModelCRUD": {
+        "serviceType": "ReadBPartner",
+        "TableName": "C_BPartner",
+        "RecordID": 118,
+        "Action": "Read"
+      },
+      "ADLoginRequest": {
+        "user": "WebService",
+        "pass": "WebService",
+        "lang": "en_US",
+        "ClientID": 11,
+        "RoleID": 50004,
+        "OrgID": 11,
+        "WarehouseID": 103,
+        "stage": 9
+      }
+    }
+  }'
+```
+
+```json Response
+{
+  "WindowTabData": {
+    "@NumRows": 1,
+    "@TotalRows": 1,
+    "@StartRow": 0,
+    "Success": true,
+    "DataSet": {
+      "DataRow": {
+        "field": [
+          {
+            "@column": "C_BPartner_ID",
+            "@type": "ID",
+            "val": "118"
+          },
+          {
+            "@column": "Value",
+            "@type": "String",
+            "val": "CUST-001"
+          },
+          {
+            "@column": "Name",
+            "@type": "String",
+            "val": "New Customer Inc."
+          },
+          {
+            "@column": "IsCustomer",
+            "@type": "YesNo",
+            "val": "Y"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+</CodeGroup>
+
+<ParamField path="RecordID" type="integer" required>
+  The ID of the record to read
+</ParamField>
+
+<ParamField path="Action" type="string" required>
+  Must be "Read"
+</ParamField>
+
+### Update Data
+
+Update an existing record.
+
+```bash
+curl -X POST https://localhost:8443/ADInterface/services/rest/model_adservice/update_data \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ModelCRUDRequest": {
+      "ModelCRUD": {
+        "serviceType": "UpdateBPartner",
+        "TableName": "C_BPartner",
+        "RecordID": 118,
+        "Action": "Update",
+        "DataRow": {
+          "field": [
+            {
+              "@column": "Name",
+              "val": "Updated Customer Name"
+            },
+            {
+              "@column": "Description",
+              "val": "Customer description updated via REST API"
+            }
+          ]
+        }
+      },
+      "ADLoginRequest": { ... }
+    }
+  }'
+```
+
+### Delete Data
+
+Delete a record by ID.
+
+```bash
+curl -X POST https://localhost:8443/ADInterface/services/rest/model_adservice/delete_data \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ModelCRUDRequest": {
+      "ModelCRUD": {
+        "serviceType": "DeleteBPartner",
+        "TableName": "C_BPartner",
+        "RecordID": 118,
+        "Action": "Delete"
+      },
+      "ADLoginRequest": { ... }
+    }
+  }'
+```
+
+<Warning>
+  Delete operations are subject to database constraints. If the record has dependent records, the delete will fail.
+</Warning>
+
+### Query Data
+
+Query multiple records with filters, pagination, and sorting.
+
+<CodeGroup>
+```bash cURL with Filters
+curl -X POST https://localhost:8443/ADInterface/services/rest/model_adservice/query_data \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ModelCRUDRequest": {
+      "ModelCRUD": {
+        "serviceType": "QueryBPartner",
+        "TableName": "C_BPartner",
+        "RecordID": 0,
+        "Filter": "IsCustomer=\u0027Y\u0027 AND Name LIKE \u0027A%\u0027",
+        "Action": "Read",
+        "Offset": 0,
+        "Limit": 50
+      },
+      "ADLoginRequest": { ... }
+    }
+  }'
+```
+
+```bash Filter by Field Values
+curl -X POST https://localhost:8443/ADInterface/services/rest/model_adservice/query_data \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ModelCRUDRequest": {
+      "ModelCRUD": {
+        "serviceType": "QueryBPartner",
+        "TableName": "C_BPartner",
+        "RecordID": 0,
+        "Action": "Read",
+        "DataRow": {
+          "field": [
+            {
+              "@column": "C_BP_Group_ID",
+              "val": "103"
+            },
+            {
+              "@column": "IsActive",
+              "val": "Y"
+            }
+          ]
+        },
+        "Offset": 0,
+        "Limit": 100
+      },
+      "ADLoginRequest": { ... }
+    }
+  }'
+```
+</CodeGroup>
+
+<ParamField path="Filter" type="string">
+  SQL WHERE clause condition (without the WHERE keyword). Use standard SQL syntax with proper escaping.
+</ParamField>
+
+<ParamField path="Offset" type="integer">
+  Starting row for pagination (0-based)
+</ParamField>
+
+<ParamField path="Limit" type="integer">
+  Maximum number of rows to return
+</ParamField>
+
+<ParamField path="DataRow" type="object">
+  Alternative to Filter: specify field values to match
+</ParamField>
+
+### Create or Update Data
+
+Create a new record if it doesn't exist, or update if it does.
+
+```bash
+curl -X POST https://localhost:8443/ADInterface/services/rest/model_adservice/create_update_data \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ModelCRUDRequest": {
+      "ModelCRUD": {
+        "serviceType": "CreateUpdateBPartner",
+        "TableName": "C_BPartner",
+        "RecordID": 0,
+        "recordIDVariable": "@C_BPartner_ID@",
+        "Action": "CreateUpdate",
+        "DataRow": {
+          "field": [
+            {
+              "@column": "Value",
+              "val": "CUST-001"
+            },
+            {
+              "@column": "Name",
+              "val": "Customer Name"
+            }
+          ]
+        }
+      },
+      "ADLoginRequest": { ... }
+    }
+  }'
+```
+
+<Info>
+  The system searches for an existing record matching the key fields. If found, it updates; otherwise, it creates a new record.
+</Info>
+
+### Run Process
+
+Execute iDempiere processes and reports.
+
+<CodeGroup>
+```bash Simple Process
+curl -X POST https://localhost:8443/ADInterface/services/rest/model_adservice/run_process \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ModelRunProcessRequest": {
+      "ModelRunProcess": {
+        "serviceType": "RunInvoiceGenerate",
+        "@AD_Process_ID": 119,
+        "@AD_Menu_ID": 0,
+        "@AD_Record_ID": 0,
+        "ParamValues": {
+          "field": [
+            {
+              "@column": "C_DocType_ID",
+              "val": "1000000"
+            },
+            {
+              "@column": "DateInvoiced",
+              "val": "2024-03-01"
+            },
+            {
+              "@column": "C_BPartner_ID",
+              "val": "118"
+            }
+          ]
+        }
+      },
+      "ADLoginRequest": { ... }
+    }
+  }'
+```
+
+```json Response
+{
+  "RunProcessResponse": {
+    "@IsError": false,
+    "@IsReport": true,
+    "@ReportFormat": "pdf",
+    "Summary": "Generated 5 invoices",
+    "LogInfo": "Process completed successfully",
+    "Data": "JVBERi0xLjQKJeLjz9MKMy..."
+  }
+}
+```
+</CodeGroup>
+
+<ParamField path="@AD_Process_ID" type="integer" required>
+  The process ID to execute
+</ParamField>
+
+<ParamField path="@AD_Record_ID" type="integer">
+  Record ID for context (0 if not applicable)
+</ParamField>
+
+<ParamField path="ParamValues.field" type="array">
+  Process parameters with column names and values
+</ParamField>
+
+<ResponseField name="RunProcessResponse.IsError" type="boolean">
+  Whether the process failed
+</ResponseField>
+
+<ResponseField name="RunProcessResponse.IsReport" type="boolean">
+  Whether the process generated a report
+</ResponseField>
+
+<ResponseField name="RunProcessResponse.ReportFormat" type="string">
+  Format of report data (pdf, html, xls, csv, etc.)
+</ResponseField>
+
+<ResponseField name="RunProcessResponse.Summary" type="string">
+  Process execution summary message
+</ResponseField>
+
+<ResponseField name="RunProcessResponse.Data" type="string">
+  Base64-encoded report data (if IsReport is true)
+</ResponseField>
+
+### Set Document Action
+
+Process documents with specific actions (Complete, Void, Close, etc.).
+
+```bash
+curl -X POST https://localhost:8443/ADInterface/services/rest/model_adservice/set_docaction \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ModelSetDocActionRequest": {
+      "ModelSetDocAction": {
+        "serviceType": "CompleteOrder",
+        "tableName": "C_Order",
+        "recordID": 1000,
+        "docAction": "CO"
+      },
+      "ADLoginRequest": { ... }
+    }
+  }'
+```
+
+<ParamField path="tableName" type="string" required>
+  Document table name (C_Order, C_Invoice, etc.)
+</ParamField>
+
+<ParamField path="recordID" type="integer" required>
+  Document record ID
+</ParamField>
+
+<ParamField path="docAction" type="string" required>
+  Document action code:
+  - `CO` - Complete
+  - `CL` - Close
+  - `VO` - Void
+  - `RE` - Reverse - Correct
+  - `RC` - Reverse - Accrual
+  - `RA` - Reactivate
+  - `PR` - Post
+</ParamField>
+
+### Get List
+
+Retrieve lookup lists and reference data.
+
+```bash
+curl -X POST https://localhost:8443/ADInterface/services/rest/model_adservice/get_list \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ModelGetListRequest": {
+      "ModelGetList": {
+        "serviceType": "GetListSalesRegions",
+        "AD_Reference_ID": 144,
+        "Filter": ""
+      },
+      "ADLoginRequest": { ... }
+    }
+  }'
+```
+
+<ParamField path="AD_Reference_ID" type="integer" required>
+  The reference ID (from AD_Reference table)
+</ParamField>
+
+<ParamField path="Filter" type="string">
+  Optional filter to limit results
+</ParamField>
+
+## Composite Service Endpoints
+
+Execute multiple operations atomically under `/rest/composite_service/`.
+
+### Composite Operation
+
+```bash
+curl -X POST https://localhost:8443/ADInterface/services/rest/composite_service/composite_operation \
+  -H "Content-Type: application/json" \
+  -d '{
+    "CompositeRequest": {
+      "ADLoginRequest": { ... },
+      "serviceType": "CompositeOrderEntry",
+      "operations": {
+        "operation": [
+          {
+            "@preCommit": false,
+            "@postCommit": false,
+            "TargetPort": "createData",
+            "ModelCRUD": {
+              "serviceType": "CreateOrder",
+              "TableName": "C_Order",
+              "RecordID": 0,
+              "Action": "Create",
+              "DataRow": {
+                "field": [
+                  { "@column": "C_BPartner_ID", "val": "118" },
+                  { "@column": "C_DocTypeTarget_ID", "val": "135" }
+                ]
+              }
+            }
+          },
+          {
+            "@preCommit": false,
+            "@postCommit": false,
+            "TargetPort": "createData",
+            "ModelCRUD": {
+              "serviceType": "CreateOrderLine",
+              "TableName": "C_OrderLine",
+              "RecordID": 0,
+              "Action": "Create",
+              "DataRow": {
+                "field": [
+                  { "@column": "C_Order_ID", "val": "@C_Order.C_Order_ID@" },
+                  { "@column": "M_Product_ID", "val": "137" },
+                  { "@column": "QtyOrdered", "val": "5" }
+                ]
+              }
+            }
+          },
+          {
+            "@preCommit": true,
+            "@postCommit": false,
+            "TargetPort": "setDocAction",
+            "ModelSetDocAction": {
+              "serviceType": "CompleteOrder",
+              "tableName": "C_Order",
+              "recordID": 0,
+              "recordIDVariable": "@C_Order.C_Order_ID@",
+              "docAction": "CO"
+            }
+          }
+        ]
+      }
+    }
+  }'
+```
+
+<ParamField path="operations.operation" type="array" required>
+  Array of operations to execute in sequence
+</ParamField>
+
+<ParamField path="TargetPort" type="string" required>
+  Operation type: `createData`, `readData`, `updateData`, `deleteData`, `runProcess`, `setDocAction`, `createUpdateData`
+</ParamField>
+
+<ParamField path="@preCommit" type="boolean">
+  If true, commit transaction before this operation
+</ParamField>
+
+<ParamField path="@postCommit" type="boolean">
+  If true, commit transaction after this operation
+</ParamField>
+
+<Info>
+  Use context variables like `@TableName.ColumnName@` to reference values from previous operations in the composite request.
+</Info>
+
+## Data Types and Formatting
+
+### Field Types
+
+<ParamField path="@type" type="string">
+  Indicates the data type returned in responses:
+  - `ID` - Integer identifier
+  - `String` - Text value
+  - `Integer` - Numeric integer
+  - `Number` - Decimal number
+  - `YesNo` - Boolean (Y/N)
+  - `Date` - Date value
+  - `DateTime` - Timestamp
+  - `List` - List/lookup value
+</ParamField>
+
+### Date/Time Format
+
+Dates and timestamps use ISO 8601 format:
+
+```
+Date: YYYY-MM-DD
+DateTime: YYYY-MM-DD HH:MM:SS
+Time: HH:MM:SS
+```
+
+### Boolean Values
+
+Use 'Y' for true and 'N' for false:
+
+```json
+{ "@column": "IsActive", "val": "Y" }
+{ "@column": "IsCustomer", "val": "N" }
+```
+
+### Binary Data
+
+Binary data (images, files) is Base64 encoded:
+
+```json
+{ "@column": "BinaryData", "val": "JVBERi0xLjQKJeLjz9..." }
+```
+
+## Error Handling
+
+### Error Response Structure
+
+```json
+{
+  "StandardResponse": {
+    "@IsError": true,
+    "@IsRolledBack": true,
+    "@RecordID": 0,
+    "Error": "Invalid value for column C_BP_Group_ID: Foreign key constraint violation"
+  }
+}
+```
+
+<ResponseField name="@IsError" type="boolean">
+  True if operation failed
+</ResponseField>
+
+<ResponseField name="@IsRolledBack" type="boolean">
+  True if transaction was rolled back
+</ResponseField>
+
+<ResponseField name="Error" type="string">
+  Detailed error message
+</ResponseField>
+
+### Common HTTP Status Codes
+
+- `200 OK` - Request processed (check IsError flag)
+- `400 Bad Request` - Invalid JSON/XML payload
+- `401 Unauthorized` - Authentication failed
+- `404 Not Found` - Endpoint not found
+- `500 Internal Server Error` - Server error
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Check IsError Flag">
+    Even with HTTP 200, the operation may have failed. Always check the `IsError` field in the response.
+    
+    ```javascript
+    if (data.StandardResponse.IsError) {
+      console.error('Operation failed:', data.StandardResponse.Error);
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Use Pagination for Large Datasets">
+    When querying data, always use Offset and Limit to avoid performance issues:
+    
+    ```json
+    {
+      "Offset": 0,
+      "Limit": 100
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle Binary Data Properly">
+    When receiving binary data (reports, images), decode Base64:
+    
+    ```javascript
+    const pdfData = atob(response.RunProcessResponse.Data);
+    const blob = new Blob([pdfData], { type: 'application/pdf' });
+    ```
+  </Accordion>
+  
+  <Accordion title="Use Composite Service for Related Operations">
+    Group related operations to ensure data consistency and reduce network overhead.
+  </Accordion>
+  
+  <Accordion title="Implement Retry Logic">
+    Network issues can occur. Implement exponential backoff for failed requests:
+    
+    ```python
+    from tenacity import retry, stop_after_attempt, wait_exponential
+    
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    def call_api(payload):
+        return requests.post(url, json=payload)
+    ```
+  </Accordion>
+</AccordionGroup>

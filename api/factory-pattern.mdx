@@ -1,0 +1,540 @@
+---
+title: Factory Pattern
+description: Complete reference for implementing custom model, process, and callout factories in iDempiere
+---
+
+## Overview
+
+The Factory Pattern in iDempiere allows you to:
+
+- Extend or replace standard model classes with custom implementations
+- Create custom process instances
+- Provide custom callout implementations
+- Implement plugin-based extensibility
+
+Factories are registered as OSGi services and are invoked by the framework when models, processes, or callouts are instantiated.
+
+**Base Package:** `org.adempiere.base`
+
+**Source Files:**
+- `org.adempiere.base/src/org/adempiere/base/IModelFactory.java`
+- `org.adempiere.base/src/org/adempiere/base/IProcessFactory.java`
+- `org.adempiere.base/src/org/adempiere/base/ICalloutFactory.java`
+
+## IModelFactory
+
+Provides custom model implementations for tables.
+
+**Package:** `org.adempiere.base`
+
+### Interface Methods
+
+#### getClass
+
+```java
+public Class<?> getClass(String tableName)
+```
+
+<ParamField path="tableName" type="String" required>
+  Database table name (e.g., "C_Order", "C_Invoice")
+</ParamField>
+
+<ResponseField name="return" type="Class<?>">
+  Model class for the table, or null if not handled by this factory
+</ResponseField>
+
+Returns the persistence class to use for a given table.
+
+#### getPO (by ID)
+
+```java
+public PO getPO(String tableName, int Record_ID, String trxName)
+```
+
+<ParamField path="tableName" type="String" required>
+  Database table name
+</ParamField>
+
+<ParamField path="Record_ID" type="int" required>
+  Record ID to load
+</ParamField>
+
+<ParamField path="trxName" type="String">
+  Transaction name
+</ParamField>
+
+<ResponseField name="return" type="PO">
+  Loaded PO instance, or null if not handled by this factory
+</ResponseField>
+
+#### getPO (by UUID)
+
+```java
+default public PO getPO(String tableName, String Record_UU, String trxName)
+```
+
+<ParamField path="tableName" type="String" required>
+  Database table name
+</ParamField>
+
+<ParamField path="Record_UU" type="String" required>
+  Record UUID to load
+</ParamField>
+
+<ParamField path="trxName" type="String">
+  Transaction name
+</ParamField>
+
+<ResponseField name="return" type="PO">
+  Loaded PO instance, or null if not handled
+</ResponseField>
+
+<ResponseField name="throws" type="AdempiereException">
+  If UUID constructor not implemented in this factory
+</ResponseField>
+
+#### getPO (from ResultSet)
+
+```java
+public PO getPO(String tableName, ResultSet rs, String trxName)
+```
+
+<ParamField path="tableName" type="String" required>
+  Database table name
+</ParamField>
+
+<ParamField path="rs" type="ResultSet" required>
+  ResultSet positioned at row to load
+</ParamField>
+
+<ParamField path="trxName" type="String">
+  Transaction name
+</ParamField>
+
+<ResponseField name="return" type="PO">
+  Loaded PO instance, or null if not handled by this factory
+</ResponseField>
+
+### Implementation Example
+
+```java
+package com.example.factory;
+
+import java.sql.ResultSet;
+import org.adempiere.base.IModelFactory;
+import org.compiere.model.PO;
+import org.compiere.util.Env;
+import com.example.model.MCustomOrder;
+import com.example.model.MCustomInvoice;
+
+/**
+ * Custom Model Factory
+ * Provides custom implementations for specific tables
+ */
+public class CustomModelFactory implements IModelFactory {
+    
+    @Override
+    public Class<?> getClass(String tableName) {
+        if (tableName.equals("C_Order")) {
+            return MCustomOrder.class;
+        }
+        else if (tableName.equals("C_Invoice")) {
+            return MCustomInvoice.class;
+        }
+        return null;
+    }
+    
+    @Override
+    public PO getPO(String tableName, int Record_ID, String trxName) {
+        if (tableName.equals("C_Order")) {
+            return new MCustomOrder(Env.getCtx(), Record_ID, trxName);
+        }
+        else if (tableName.equals("C_Invoice")) {
+            return new MCustomInvoice(Env.getCtx(), Record_ID, trxName);
+        }
+        return null;
+    }
+    
+    @Override
+    public PO getPO(String tableName, String Record_UU, String trxName) {
+        if (tableName.equals("C_Order")) {
+            return new MCustomOrder(Env.getCtx(), Record_UU, trxName);
+        }
+        else if (tableName.equals("C_Invoice")) {
+            return new MCustomInvoice(Env.getCtx(), Record_UU, trxName);
+        }
+        return null;
+    }
+    
+    @Override
+    public PO getPO(String tableName, ResultSet rs, String trxName) {
+        if (tableName.equals("C_Order")) {
+            return new MCustomOrder(Env.getCtx(), rs, trxName);
+        }
+        else if (tableName.equals("C_Invoice")) {
+            return new MCustomInvoice(Env.getCtx(), rs, trxName);
+        }
+        return null;
+    }
+}
+```
+
+### OSGi Service Registration
+
+**Using Declarative Services (component.xml):**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0" 
+               name="com.example.factory.CustomModelFactory">
+   <implementation class="com.example.factory.CustomModelFactory"/>
+   <service>
+      <provide interface="org.adempiere.base.IModelFactory"/>
+   </service>
+   <property name="service.ranking" type="Integer" value="100"/>
+</scr:component>
+```
+
+**Using Annotations:**
+
+```java
+import org.osgi.service.component.annotations.Component;
+
+@Component(
+    name = "com.example.factory.CustomModelFactory",
+    service = IModelFactory.class,
+    property = {"service.ranking:Integer=100"}
+)
+public class CustomModelFactory implements IModelFactory {
+    // Implementation as above
+}
+```
+
+## IProcessFactory
+
+Provides custom process instances.
+
+**Package:** `org.adempiere.base`
+
+### Interface Methods
+
+#### newProcessInstance
+
+```java
+public ProcessCall newProcessInstance(String className)
+```
+
+<ParamField path="className" type="String" required>
+  Fully qualified class name of the process
+</ParamField>
+
+<ResponseField name="return" type="ProcessCall">
+  New process instance, or null if not handled by this factory
+</ResponseField>
+
+### Implementation Example
+
+```java
+package com.example.factory;
+
+import org.adempiere.base.IProcessFactory;
+import org.compiere.process.ProcessCall;
+import com.example.process.CustomOrderProcess;
+import com.example.process.CustomInvoiceProcess;
+
+/**
+ * Custom Process Factory
+ * Creates instances of custom processes
+ */
+public class CustomProcessFactory implements IProcessFactory {
+    
+    @Override
+    public ProcessCall newProcessInstance(String className) {
+        if (className.equals("com.example.process.CustomOrderProcess")) {
+            return new CustomOrderProcess();
+        }
+        else if (className.equals("com.example.process.CustomInvoiceProcess")) {
+            return new CustomInvoiceProcess();
+        }
+        return null;
+    }
+}
+```
+
+### OSGi Service Registration
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0" 
+               name="com.example.factory.CustomProcessFactory">
+   <implementation class="com.example.factory.CustomProcessFactory"/>
+   <service>
+      <provide interface="org.adempiere.base.IProcessFactory"/>
+   </service>
+   <property name="service.ranking" type="Integer" value="10"/>
+</scr:component>
+```
+
+## ICalloutFactory
+
+Provides custom callout instances.
+
+**Package:** `org.adempiere.base`
+
+### Interface Methods
+
+#### getCallout
+
+```java
+public Callout getCallout(String className, String methodName)
+```
+
+<ParamField path="className" type="String" required>
+  Fully qualified class name of the callout
+</ParamField>
+
+<ParamField path="methodName" type="String" required>
+  Method name within the callout class
+</ParamField>
+
+<ResponseField name="return" type="Callout">
+  Callout instance, or null if not handled by this factory
+</ResponseField>
+
+### Implementation Example
+
+```java
+package com.example.factory;
+
+import org.adempiere.base.ICalloutFactory;
+import org.compiere.model.Callout;
+import com.example.callout.CustomOrderCallout;
+import com.example.callout.CustomInvoiceCallout;
+
+/**
+ * Custom Callout Factory
+ * Creates instances of custom callouts
+ */
+public class CustomCalloutFactory implements ICalloutFactory {
+    
+    @Override
+    public Callout getCallout(String className, String methodName) {
+        Callout callout = null;
+        
+        if (className.equals("com.example.callout.CustomOrderCallout")) {
+            callout = new CustomOrderCallout();
+        }
+        else if (className.equals("com.example.callout.CustomInvoiceCallout")) {
+            callout = new CustomInvoiceCallout();
+        }
+        
+        return callout;
+    }
+}
+```
+
+### OSGi Service Registration with Priority
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0" 
+               name="com.example.factory.CustomCalloutFactory">
+   <implementation class="com.example.factory.CustomCalloutFactory"/>
+   <service>
+      <provide interface="org.adempiere.base.ICalloutFactory"/>
+   </service>
+   <property name="service.ranking" type="Integer" value="1"/>
+</scr:component>
+```
+
+<Note>
+For callout factories, use `service.ranking:Integer=1` or higher to prioritize your factory over the core factory.
+</Note>
+
+## Complete Plugin Example
+
+A complete example showing factory integration in an OSGi plugin.
+
+### Project Structure
+
+```
+com.example.plugin/
+├── META-INF/
+│   └── MANIFEST.MF
+├── OSGI-INF/
+│   ├── ModelFactory.xml
+│   ├── ProcessFactory.xml
+│   └── CalloutFactory.xml
+├── src/
+│   └── com/example/
+│       ├── factory/
+│       │   ├── CustomModelFactory.java
+│       │   ├── CustomProcessFactory.java
+│       │   └── CustomCalloutFactory.java
+│       ├── model/
+│       │   └── MCustomOrder.java
+│       ├── process/
+│       │   └── CustomOrderProcess.java
+│       └── callout/
+│           └── CustomOrderCallout.java
+└── build.properties
+```
+
+### MANIFEST.MF
+
+```
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Custom Plugin
+Bundle-SymbolicName: com.example.plugin;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Require-Bundle: org.adempiere.base;bundle-version="11.0.0"
+Service-Component: OSGI-INF/ModelFactory.xml,
+ OSGI-INF/ProcessFactory.xml,
+ OSGI-INF/CalloutFactory.xml
+Import-Package: org.osgi.service.component.annotations
+```
+
+### Custom Model Implementation
+
+```java
+package com.example.model;
+
+import java.sql.ResultSet;
+import java.util.Properties;
+import org.compiere.model.MOrder;
+import org.compiere.util.CLogger;
+
+/**
+ * Custom Order Model
+ * Extends standard order with custom business logic
+ */
+public class MCustomOrder extends MOrder {
+    
+    private static final long serialVersionUID = 1L;
+    private static CLogger log = CLogger.getCLogger(MCustomOrder.class);
+    
+    public MCustomOrder(Properties ctx, int C_Order_ID, String trxName) {
+        super(ctx, C_Order_ID, trxName);
+    }
+    
+    public MCustomOrder(Properties ctx, ResultSet rs, String trxName) {
+        super(ctx, rs, trxName);
+    }
+    
+    @Override
+    protected boolean beforeSave(boolean newRecord) {
+        if (!super.beforeSave(newRecord))
+            return false;
+        
+        // Custom validation
+        if (newRecord) {
+            log.info("Creating custom order with special logic");
+            // Add custom logic here
+        }
+        
+        return true;
+    }
+    
+    @Override
+    protected boolean afterSave(boolean newRecord, boolean success) {
+        if (!super.afterSave(newRecord, success))
+            return false;
+        
+        if (newRecord) {
+            // Custom post-save logic
+            createCustomRecords();
+        }
+        
+        return true;
+    }
+    
+    private void createCustomRecords() {
+        // Custom implementation
+        log.info("Creating custom related records for order " + getDocumentNo());
+    }
+}
+```
+
+## Service Ranking
+
+The `service.ranking` property determines the order in which factories are invoked:
+
+- **Higher values = Higher priority**
+- Core iDempiere factories typically use ranking of 0
+- Plugin factories should use positive values to override core behavior
+- Typical values:
+  - `1-10`: Minor extensions
+  - `10-50`: Standard plugin priority
+  - `50-100`: High priority overrides
+
+**Example with multiple factories:**
+
+```java
+// High priority factory - checked first
+@Component(
+    service = IModelFactory.class,
+    property = {"service.ranking:Integer=100"}
+)
+public class HighPriorityFactory implements IModelFactory {
+    // ...
+}
+
+// Standard priority factory - checked if high priority returns null
+@Component(
+    service = IModelFactory.class,
+    property = {"service.ranking:Integer=10"}
+)
+public class StandardFactory implements IModelFactory {
+    // ...
+}
+```
+
+## Factory Chain
+
+When multiple factories are registered:
+
+1. Framework sorts factories by `service.ranking` (descending)
+2. Invokes each factory in order
+3. First factory to return non-null result wins
+4. If all factories return null, uses default implementation
+
+## Best Practices
+
+1. **Return Null:** Always return `null` for tables/classes you don't handle
+2. **Performance:** Keep factory methods lightweight - they're called frequently
+3. **Service Ranking:** Use appropriate ranking to control factory precedence
+4. **Consistency:** Implement all three getPO methods consistently
+5. **Testing:** Test factory behavior in all three construction scenarios
+6. **Documentation:** Document which tables/processes your factory handles
+7. **Namespace:** Use unique package names to avoid class conflicts
+8. **Singleton:** Factories are singletons - avoid instance state
+9. **Thread Safety:** Ensure factory methods are thread-safe
+10. **Logging:** Log factory instantiations for debugging
+
+## Debugging Factories
+
+Enable factory debugging in iDempiere:
+
+```java
+// Add to your factory for debugging
+import org.compiere.util.CLogger;
+
+private static CLogger log = CLogger.getCLogger(CustomModelFactory.class);
+
+@Override
+public PO getPO(String tableName, int Record_ID, String trxName) {
+    if (tableName.equals("C_Order")) {
+        log.info("CustomModelFactory creating MCustomOrder for ID " + Record_ID);
+        return new MCustomOrder(Env.getCtx(), Record_ID, trxName);
+    }
+    return null;
+}
+```
+
+## See Also
+
+- [Model API](/api/model-api) - PO class reference
+- [Process API](/api/process-api) - Process development
+- [Callout API](/api/callout-api) - Callout development

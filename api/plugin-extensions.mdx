@@ -1,0 +1,251 @@
+---
+title: "Plugin Extensions"
+description: "Understanding iDempiere's plugin extension point system"
+---
+
+## Overview
+
+iDempiere uses Eclipse's plugin extension framework to provide extensibility throughout the system. Extension points allow plugins to contribute functionality without modifying core code.
+
+## Extension Point Architecture
+
+Extension points are defined in the `plugin.xml` file of the `org.adempiere.base` bundle. Each extension point has:
+
+- **ID**: Unique identifier for the extension point
+- **Name**: Human-readable name
+- **Schema**: XML schema defining the structure (`.exsd` files)
+
+## Core Extension Points
+
+iDempiere provides several key extension points defined in `org.adempiere.base/plugin.xml`:
+
+### Business Logic Extensions
+
+- **org.adempiere.base.IColumnCallout**: Column callout implementations
+- **org.adempiere.base.Process**: Business process implementations
+- **org.adempiere.base.ModelValidator**: Model event listeners
+
+### Integration Extensions
+
+- **org.compiere.model.PaymentProcessor**: Payment gateway integrations
+- **org.adempiere.model.ITaxProvider**: Tax calculation services
+- **org.adempiere.model.IShipmentProcessor**: Shipping carrier integrations
+- **org.adempiere.model.IAddressValidation**: Address validation services
+
+### Data Exchange Extensions
+
+- **org.adempiere.base.IGridTabExporter**: Grid data export formats
+- **org.adempiere.base.IGridTabImporter**: Grid data import formats
+
+## Extension Point Definition
+
+From `org.adempiere.base/plugin.xml`:
+
+```xml
+<extension-point 
+    id="org.adempiere.base.Process" 
+    name="Process" 
+    schema="schema/org.adempiere.base.Process.exsd"/>
+
+<extension-point 
+    id="org.compiere.model.PaymentProcessor" 
+    name="Payment Processor" 
+    schema="schema/org.compiere.model.PaymentProcessor.exsd"/>
+
+<extension-point 
+    id="org.adempiere.model.ITaxProvider" 
+    name="Tax Provider" 
+    schema="schema/org.adempiere.model.ITaxProvider.exsd"/>
+
+<extension-point 
+    id="org.adempiere.model.IShipmentProcessor" 
+    name="Shipment Processor" 
+    schema="schema/org.adempiere.model.IShipmentProcessor.exsd"/>
+```
+
+## Creating an Extension
+
+### 1. Define Extension in plugin.xml
+
+In your plugin's `plugin.xml` file:
+
+```xml
+<extension
+    id="com.example.MyProcess"
+    name="My Custom Process"
+    point="org.adempiere.base.Process">
+    <process
+        class="com.example.MyProcess"
+        priority="0">
+    </process>
+</extension>
+```
+
+### 2. Extension Attributes
+
+**Required Attributes:**
+- `id`: Unique identifier for your extension
+- `point`: The extension point ID you're extending
+- `class`: Fully qualified class name of your implementation
+
+**Optional Attributes:**
+- `name`: Human-readable name
+- `priority`: Numeric priority (higher values = higher priority, default: 0)
+
+### 3. Priority System
+
+When multiple extensions exist for the same extension point:
+- Higher priority values are selected first
+- Extensions with equal priority are selected in load order
+- Default priority is 0
+
+```xml
+<!-- This extension will be preferred over default implementations -->
+<extension
+    id="com.example.CustomTaxProvider"
+    name="Custom Tax Provider"
+    point="org.adempiere.model.ITaxProvider">
+    <provider
+        class="com.example.CustomTaxProvider"
+        priority="10">
+    </provider>
+</extension>
+```
+
+## Built-in Extensions
+
+iDempiere includes several built-in extensions in `plugin.xml`:
+
+### Grid Data Exporters
+
+```xml
+<extension
+    id="org.adempiere.impexp.GridTabXlsExporter"
+    name="Grid data excel exporter"
+    point="org.adempiere.base.IGridTabExporter">
+    <exporter
+        class="org.adempiere.impexp.GridTabExcelExporter"
+        priority="0">
+    </exporter>
+</extension>
+
+<extension
+    id="org.adempiere.impexp.GridTabXLSXExporter"
+    name="Grid data excel exporter"
+    point="org.adempiere.base.IGridTabExporter">
+    <exporter
+        class="org.adempiere.impexp.GridTabXLSXExporter"
+        priority="0">
+    </exporter>
+</extension>
+
+<extension
+    id="org.adempiere.impexp.GridTabCSVExporter"
+    name="Grid data CSV exporter"
+    point="org.adempiere.base.IGridTabExporter">
+    <exporter
+        class="org.adempiere.impexp.GridTabCSVExporter"
+        priority="0">
+    </exporter>
+</extension>
+
+<extension
+    id="org.adempiere.impexp.GridTabSQLInsertExporter"
+    name="Export data as SQL insert statement"
+    point="org.adempiere.base.IGridTabExporter">
+    <exporter
+        class="org.adempiere.impexp.GridTabSQLInsertExporter"
+        priority="0">
+    </exporter>
+</extension>
+```
+
+### Standard Tax Provider
+
+```xml
+<extension
+    id="org.compiere.model.StandardTaxProvider"
+    name="Standard Tax Provider"
+    point="org.adempiere.model.ITaxProvider">
+    <provider
+        class="org.compiere.model.StandardTaxProvider"
+        priority="0">
+    </provider>
+</extension>
+```
+
+## Extension Discovery
+
+iDempiere discovers extensions through:
+
+1. **OSGi Bundle Scanning**: Reads `plugin.xml` from all active bundles
+2. **Extension Registry**: Eclipse extension registry manages all extensions
+3. **Factory Pattern**: Core classes use factories to instantiate extensions
+
+### Example: Core Class Integration
+
+From `org.compiere.model.PaymentProcessor`:
+
+```java
+public static PaymentProcessor create(MBankAccountProcessor mbap, 
+                                       PaymentInterface mp) {
+    return Core.getPaymentProcessor(mbap, mp);
+}
+```
+
+The `Core` class uses the extension registry to find and instantiate the appropriate implementation based on configuration.
+
+## Database Configuration
+
+Many extensions are configured through database tables:
+
+- **C_PaymentProcessor.PayProcessorClass**: Payment processor class name
+- **C_TaxProvider.TaxProviderClass**: Tax provider class name
+- **X_ShippingProcessor.ShippingProcessorClass**: Shipment processor class name
+
+These fields store the fully qualified class name that matches an extension's `class` attribute.
+
+## Best Practices
+
+### Extension Design
+
+1. **Single Responsibility**: Each extension should have one clear purpose
+2. **Loose Coupling**: Depend on interfaces, not implementations
+3. **Error Handling**: Handle errors gracefully and provide meaningful messages
+4. **Logging**: Use iDempiere's logging framework for debugging
+
+### Priority Management
+
+1. **Use Default Priority (0)**: For most extensions
+2. **Higher Priority (10+)**: Only for replacements of default implementations
+3. **Document Priority**: Explain why non-zero priority is needed
+
+### Testing
+
+1. **Unit Tests**: Test extension logic independently
+2. **Integration Tests**: Test within iDempiere environment
+3. **Priority Testing**: Test behavior with multiple implementations
+
+## Plugin Structure
+
+A typical plugin bundle structure:
+
+```
+com.example.plugin/
+├── META-INF/
+│   └── MANIFEST.MF          # OSGi bundle manifest
+├── plugin.xml               # Extension declarations
+├── schema/
+│   └── *.exsd              # Custom extension point schemas
+└── src/
+    └── com/example/
+        └── MyExtension.java # Implementation classes
+```
+
+## Related Topics
+
+- [Payment Processors](/api/payment-processors): Payment gateway integration
+- [Tax Providers](/api/tax-providers): Tax calculation integration
+- [Shipment Processors](/api/shipment-processors): Shipping carrier integration
+- [Model Validators](../development/model-validators): Database event handling
+- [Callouts](../development/callouts): UI field event handling

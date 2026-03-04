@@ -1,0 +1,445 @@
+---
+title: "Inventory Module"
+description: "Warehouse management, stock control, and inventory movements in iDempiere"
+---
+
+The Inventory module in iDempiere provides comprehensive warehouse and stock management capabilities, from receiving goods through storage, movement, and shipment to customers.
+
+## Overview
+
+iDempiere's inventory management system tracks product quantities, locations, and movements in real-time across multiple warehouses. The system supports advanced features like serial and lot tracking, attribute management, and sophisticated inventory valuation methods.
+
+<CardGroup cols={2}>
+  <Card title="Warehouse Management" icon="warehouse" href="#warehouse-management">
+    Manage multiple warehouses with location hierarchies
+  </Card>
+  <Card title="Stock Movements" icon="truck-fast" href="#inventory-movements">
+    Track inventory receipts, issues, and transfers
+  </Card>
+  <Card title="Serial & Lot Tracking" icon="barcode" href="#serial-lot-tracking">
+    Full traceability with serial numbers and lot batches
+  </Card>
+  <Card title="Physical Inventory" icon="clipboard-check" href="#physical-inventory">
+    Conduct counts and reconcile stock levels
+  </Card>
+</CardGroup>
+
+## Warehouse Management
+
+Organize your physical storage facilities with flexible warehouse structures.
+
+### Warehouse Structure
+
+iDempiere supports multi-level warehouse organization:
+
+- **Warehouse** - Top-level storage facility (e.g., "Main Warehouse", "West Coast DC")
+- **Locators** - Specific storage locations within warehouses (e.g., "A-01-05" for Aisle A, Rack 01, Shelf 05)
+- **Default Locator** - Primary location for product storage and picking
+- **Multiple Warehouses** - Support for distributed inventory across locations
+
+### Creating Warehouses
+
+<Steps>
+  <Step title="Navigate to Warehouse">
+    Go to **Material Management** > **Warehouse & Locators** > **Warehouse**
+  </Step>
+  <Step title="Create Warehouse">
+    Click **New** and enter warehouse name, organization, and address details
+  </Step>
+  <Step title="Define Locators">
+    In the **Locator** tab, create storage locations using your naming convention
+  </Step>
+  <Step title="Set Default Locator">
+    Mark one locator as default for standard receipts and issues
+  </Step>
+  <Step title="Configure Replenishment">
+    Set up replenishment rules if using automatic stock replenishment
+  </Step>
+</Steps>
+
+### Locator Configuration
+
+Organize storage locations logically:
+
+- **Aisle-Rack-Shelf** - Traditional warehouse layout (e.g., A-12-03)
+- **Zone-Based** - Organize by functional area (Receiving, Picking, Shipping)
+- **Relative Priority** - Set picking priority for multi-locator products
+- **Dimension Tracking** - Track X, Y, Z coordinates for automated systems
+
+<Tip>
+Use consistent locator naming conventions across warehouses to simplify training and reduce picking errors. For example: [Aisle][Rack][Level]-[Bin] = "A12-03-B".
+</Tip>
+
+## Product Management
+
+Define products and their inventory characteristics.
+
+### Product Types
+
+iDempiere distinguishes between product types:
+
+- **Items** - Physical products tracked in inventory
+- **Services** - Non-inventory items for labor or services
+- **Expenses** - Expense items not tracked in stock
+- **Resources** - Equipment, machinery, or facilities
+
+### Product Configuration
+
+Key inventory-related product settings:
+
+<Steps>
+  <Step title="Create Product">
+    Navigate to **Material Management** > **Product** and create a new product
+  </Step>
+  <Step title="Set Product Type">
+    Select **Item** for inventory-tracked products
+  </Step>
+  <Step title="Enable Stocked">
+    Check **Stocked** to track inventory quantities
+  </Step>
+  <Step title="Configure Attributes">
+    Enable serial number, lot tracking, or guarantee days if needed
+  </Step>
+  <Step title="Set UOM">
+    Define unit of measure (each, box, kg, liter, etc.)
+  </Step>
+  <Step title="Define Storage">
+    Set minimum and maximum stock levels, shelf life, and storage requirements
+  </Step>
+</Steps>
+
+### Product Attributes
+
+Extend products with custom attributes:
+
+- **Serial Number Control** - Unique identifier for each unit
+- **Lot Control** - Batch tracking for groups of products
+- **Guarantee Days** - Warranty or shelf life tracking
+- **Instance Attributes** - Color, size, grade, or custom attributes
+- **Attribute Sets** - Groupings of related attributes
+
+## Inventory Movements
+
+Track all inventory transactions with complete traceability.
+
+### Movement Types
+
+iDempiere handles various inventory movement scenarios:
+
+#### Material Receipt
+
+Receive goods into inventory from vendors:
+
+<Steps>
+  <Step title="Navigate to Material Receipt">
+    Go to **Material Management** > **Material Receipt**
+  </Step>
+  <Step title="Create from Purchase Order">
+    Use **Create From** to generate receipt lines from a purchase order
+  </Step>
+  <Step title="Enter Receipt Quantities">
+    Confirm quantities received and adjust if necessary
+  </Step>
+  <Step title="Assign Serial/Lot Numbers">
+    For tracked products, assign serial numbers or lot batches
+  </Step>
+  <Step title="Complete Receipt">
+    Complete the document to update inventory and create accounting entries
+  </Step>
+</Steps>
+
+#### Material Shipment
+
+Ship goods to customers:
+
+- **Create from Sales Order** - Generate shipments from confirmed orders
+- **Pick and Confirm** - Select items from inventory locations
+- **Serial/Lot Selection** - Choose specific units or lots to ship
+- **Shipment Completion** - Update inventory and trigger invoicing
+
+#### Movement
+
+Transfer inventory between locations:
+
+- **Warehouse to Warehouse** - Transfer between different facilities
+- **Locator to Locator** - Reorganize within a single warehouse
+- **In-Transit Tracking** - Monitor goods in transit between locations
+- **Movement Confirmation** - Two-step process (initiate and confirm)
+
+<Note>
+All inventory movements automatically update stock levels and create accounting postings for inventory value changes.
+</Note>
+
+### Internal Use
+
+Record inventory consumed internally:
+
+- **Inventory Use** - Consume materials for internal projects or operations
+- **Charge Assignment** - Allocate costs to departments or projects
+- **Accounting Impact** - Transfer from inventory to expense accounts
+
+## Serial & Lot Tracking
+
+Implement full product traceability throughout the supply chain.
+
+### Serial Number Tracking
+
+Track individual items with unique identifiers:
+
+- **Unique Identification** - Each unit has a distinct serial number
+- **Complete History** - Track from receipt through sale and service
+- **Warranty Management** - Monitor warranty periods by serial number
+- **Field Service** - Link service requests to specific units
+- **Recall Management** - Quickly identify and locate affected units
+
+### Lot/Batch Tracking
+
+Manage groups of products produced or received together:
+
+- **Lot Numbers** - Group products by production batch or receipt
+- **Expiration Dates** - Track shelf life and manage FEFO (First Expired, First Out)
+- **Lot Attributes** - Custom attributes per lot (production date, quality grade)
+- **Traceability** - Forward and backward tracking through the supply chain
+- **Quality Control** - Hold or reject entire lots based on inspection results
+
+### Implementing Tracking
+
+<Steps>
+  <Step title="Enable on Product">
+    In the product definition, check **Serial No** or **Lot** control
+  </Step>
+  <Step title="Define Lot Control">
+    Set lot control to "None", "Create", or "Both" (create and select)
+  </Step>
+  <Step title="Set Serial No Control">
+    Choose when serial numbers are assigned (on receipt, shipment, or both)
+  </Step>
+  <Step title="Configure Guarantees">
+    Enter guarantee days for warranty or shelf life tracking
+  </Step>
+  <Step title="Assign on Transactions">
+    During receipts and shipments, specify serial numbers or lots
+  </Step>
+</Steps>
+
+<Warning>
+Once you enable serial or lot tracking on a product, you cannot disable it if any inventory transactions exist. Plan your tracking strategy carefully.
+</Warning>
+
+## Physical Inventory
+
+Perform stock counts and reconcile system inventory.
+
+### Inventory Count Process
+
+<Steps>
+  <Step title="Create Inventory Document">
+    Navigate to **Material Management** > **Physical Inventory** and create a new inventory
+  </Step>
+  <Step title="Generate Count List">
+    Use **Create Inventory Count** to generate lines for all products in a warehouse
+  </Step>
+  <Step title="Conduct Physical Count">
+    Count actual quantities and enter them in the **Qty Count** field
+  </Step>
+  <Step title="Review Differences">
+    System calculates differences between book and physical quantities
+  </Step>
+  <Step title="Complete Inventory">
+    Completing the document adjusts system quantities to match physical count
+  </Step>
+</Steps>
+
+### Count Strategies
+
+Implement effective inventory counting:
+
+- **Full Physical Inventory** - Count all items at period end
+- **Cycle Counting** - Regular counting of subset of items
+- **ABC Analysis** - Count high-value items more frequently
+- **Location-Based Counts** - Count by warehouse area
+- **Serial Number Verification** - Verify serial number locations
+
+### Inventory Adjustment
+
+Make ad-hoc adjustments for corrections:
+
+- **Single Product Adjustments** - Quick corrections for individual items
+- **Reason Codes** - Track why adjustments were made (damage, theft, obsolescence)
+- **Approval Workflow** - Require authorization for large adjustments
+- **Accounting Impact** - Post to inventory adjustment accounts
+
+<Tip>
+Schedule cycle counts during slow periods and assign counting to staff familiar with the products and storage locations to improve accuracy.
+</Tip>
+
+## Inventory Valuation
+
+iDempiere supports multiple inventory costing methods.
+
+### Costing Methods
+
+- **Standard Cost** - Fixed predetermined cost per unit
+- **Average Cost** - Moving weighted average based on receipts
+- **FIFO** (First In, First Out) - Cost based on oldest inventory
+- **LIFO** (Last In, First Out) - Cost based on newest inventory
+- **Last PO Price** - Cost equals last purchase order price
+
+### Cost Management
+
+Maintain accurate product costs:
+
+- **Cost Updates** - Manually adjust standard costs or let system calculate
+- **Cost History** - Track cost changes over time
+- **Cost Elements** - Separate material, overhead, and landed cost components
+- **Multi-Schema Costing** - Different costing methods for different accounting schemas
+
+### Landed Costs
+
+Allocate additional costs to inventory:
+
+- **Freight Charges** - Add shipping costs to product cost
+- **Customs and Duties** - Include import fees in landed cost
+- **Insurance** - Allocate insurance costs
+- **Other Charges** - Handling fees, storage, or other costs
+- **Allocation Methods** - Distribute by quantity, weight, volume, or amount
+
+## Stock Levels & Replenishment
+
+Maintain optimal inventory levels.
+
+### Min/Max Planning
+
+Set stock level parameters:
+
+- **Minimum Level** - Trigger point for replenishment
+- **Maximum Level** - Target stock level after replenishment
+- **Reorder Quantity** - Standard order quantity
+- **Safety Stock** - Buffer for demand variability
+- **Lead Time** - Days from order to receipt
+
+### Replenishment Methods
+
+- **Manual Replenishment** - Create requisitions or orders manually
+- **Automatic Replenishment** - System generates suggestions when min level reached
+- **MRP (Material Requirements Planning)** - Calculate requirements based on demand
+- **Kanban** - Pull-based replenishment signals
+
+### Stock Analysis
+
+Monitor inventory health:
+
+<CardGroup cols={2}>
+  <Card title="Stock on Hand Report" icon="boxes-stacked">
+    Current quantities by product and location
+  </Card>
+  <Card title="Stock Movement Report" icon="right-left">
+    Transaction history for analysis and auditing
+  </Card>
+  <Card title="Slow Moving Stock" icon="hourglass">
+    Identify items with low turnover
+  </Card>
+  <Card title="Stock Valuation" icon="dollar-sign">
+    Total inventory value by costing method
+  </Card>
+</CardGroup>
+
+## Inventory Reservations
+
+Reserve inventory for specific orders or purposes.
+
+### Reservation Management
+
+- **Sales Order Reservation** - Reserve stock for confirmed orders
+- **Automatic Reservation** - Reserve when order is completed
+- **Manual Reservation** - Explicitly reserve quantities
+- **Reservation Priority** - Handle multiple demands for same inventory
+- **Unreserve** - Release reservations if orders are cancelled
+
+### Available to Promise (ATP)
+
+Calculate available inventory:
+
+- **On Hand Quantity** - Physical quantity in stock
+- **Reserved Quantity** - Committed to orders
+- **Ordered Quantity** - Incoming from purchase orders
+- **Available** - On hand minus reserved
+- **ATP** - Available plus ordered
+
+<Note>
+The ATP calculation considers current stock, reservations, and incoming receipts to give an accurate view of available inventory for new orders.
+</Note>
+
+## Inventory Reports
+
+Generate insights from inventory data.
+
+### Standard Reports
+
+- **Inventory Status** - Current quantities and values by warehouse
+- **Movement History** - Detailed transaction log
+- **Valuation Report** - Inventory value by product or category
+- **Serial/Lot Traceability** - Track units through the system
+- **Aging Report** - Identify old or obsolete stock
+- **ABC Analysis** - Classify items by value and turnover
+
+### Reporting Dimensions
+
+Analyze inventory from multiple perspectives:
+
+- **By Product** - Individual SKU analysis
+- **By Product Category** - Group analysis
+- **By Warehouse** - Location-based inventory
+- **By Locator** - Detailed location tracking
+- **By Lot/Serial** - Batch and unit-level detail
+
+## Best Practices
+
+### Warehouse Organization
+
+- Design locator systems that scale with growth
+- Group fast-moving items near shipping areas
+- Use barcode scanners to reduce entry errors
+- Implement clearly labeled bin locations
+- Train staff on locator naming conventions
+
+### Inventory Accuracy
+
+- Perform regular cycle counts instead of annual full counts
+- Investigate and correct discrepancies immediately
+- Use serial/lot tracking for high-value or regulated items
+- Implement count procedures during slow periods
+- Assign inventory ownership to specific managers
+
+### Stock Control
+
+- Set realistic min/max levels based on actual demand patterns
+- Monitor slow-moving and obsolete inventory monthly
+- Implement FIFO or FEFO picking for dated products
+- Review and adjust reorder points quarterly
+- Use ABC analysis to focus on high-value items
+
+### System Configuration
+
+- Configure default locators for each warehouse
+- Use movement documents for all transfers between warehouses
+- Enable serial/lot tracking only when business value justifies complexity
+- Set up proper accounting defaults for inventory transactions
+- Test costing methods in development before production use
+
+## Related Modules
+
+<CardGroup cols={2}>
+  <Card title="Purchasing" icon="cart-shopping" href="/modules/purchasing">
+    Procure inventory through purchase orders
+  </Card>
+  <Card title="Sales" icon="handshake" href="/modules/sales">
+    Ship inventory to customers via sales orders
+  </Card>
+  <Card title="Manufacturing" icon="industry" href="/modules/manufacturing">
+    Consume and produce inventory through production
+  </Card>
+  <Card title="Accounting" icon="calculator" href="/modules/accounting">
+    Track inventory value and cost of goods sold
+  </Card>
+</CardGroup>

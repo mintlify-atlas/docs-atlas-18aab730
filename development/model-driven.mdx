@@ -1,0 +1,365 @@
+---
+title: Model-Driven Architecture
+description: Understanding iDempiere's dictionary-based, metadata-driven architecture
+---
+
+iDempiere is built on a model-driven architecture where the **Application Dictionary (AD)** defines all metadata for the system. This approach allows extensive customization without code changes.
+
+## The Application Dictionary
+
+The Application Dictionary is a set of database tables that define:
+
+- **Tables and Columns** - Database schema metadata
+- **Windows and Tabs** - UI structure
+- **Fields** - Field properties, validation, and display logic
+- **Processes** - Batch processes and reports
+- **Callouts** - Field-level triggers
+- **Model Validators** - Document and model event handlers
+
+### Key Metadata Tables
+
+| Table | Purpose |
+|-------|--------|
+| `AD_Table` | Defines database tables |
+| `AD_Column` | Defines table columns |
+| `AD_Window` | Defines windows/screens |
+| `AD_Tab` | Defines tabs within windows |
+| `AD_Field` | Defines fields on tabs |
+| `AD_Process` | Defines processes and reports |
+| `AD_Form` | Defines custom forms |
+| `AD_Menu` | Defines menu structure |
+
+## Generated Model Classes
+
+iDempiere automatically generates model classes from the Application Dictionary metadata.
+
+### Model Class Hierarchy
+
+Every table gets two generated classes:
+
+```
+C_Order (table)
+├── X_C_Order (generated base class)
+└── MOrder (custom business logic class)
+```
+
+- **X_** prefix - Auto-generated getter/setter methods (never edit)
+- **M** prefix - Custom business logic (your code goes here)
+
+### Example: Order Model
+
+```java org.compiere.model.MOrder
+package org.compiere.model;
+
+import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.util.Properties;
+
+/**
+ * Order Model
+ * Extends generated X_C_Order with custom business logic
+ */
+public class MOrder extends X_C_Order {
+    
+    /**
+     * Standard constructor
+     */
+    public MOrder(Properties ctx, int C_Order_ID, String trxName) {
+        super(ctx, C_Order_ID, trxName);
+    }
+    
+    /**
+     * Load constructor
+     */
+    public MOrder(Properties ctx, ResultSet rs, String trxName) {
+        super(ctx, rs, trxName);
+    }
+    
+    /**
+     * Custom business logic: calculate total amount
+     */
+    public BigDecimal getTotalLines() {
+        BigDecimal bd = new BigDecimal(0);
+        MOrderLine[] lines = getLines();
+        for (MOrderLine line : lines) {
+            bd = bd.add(line.getLineNetAmt());
+        }
+        return bd;
+    }
+    
+    /**
+     * Before Save logic
+     */
+    @Override
+    protected boolean beforeSave(boolean newRecord) {
+        // Validate business partner
+        if (getC_BPartner_ID() <= 0) {
+            log.saveError("Error", "Business Partner required");
+            return false;
+        }
+        return true;
+    }
+}
+```
+
+## Table and Column Definition
+
+### Defining a Custom Table
+
+Tables are defined in `AD_Table`:
+
+```sql
+INSERT INTO AD_Table (
+    AD_Table_ID, AD_Client_ID, AD_Org_ID,
+    Name, TableName, Description,
+    AccessLevel, EntityType, IsDeleteable
+) VALUES (
+    200001, 0, 0,
+    'Custom Product Rating', 'XX_Product_Rating',
+    'Customer ratings for products',
+    '3', 'U', 'Y'
+);
+```
+
+**AccessLevel values:**
+- `1` = Organization only
+- `2` = Client only  
+- `3` = Client+Organization
+- `4` = System only
+- `6` = System+Client
+- `7` = All
+
+### Defining Columns
+
+Columns are defined in `AD_Column`:
+
+```sql
+INSERT INTO AD_Column (
+    AD_Column_ID, AD_Table_ID, ColumnName,
+    Name, Description, FieldLength,
+    AD_Reference_ID, IsMandatory, IsIdentifier,
+    SeqNo, EntityType
+) VALUES (
+    200101, 200001, 'Rating',
+    'Rating', 'Product rating from 1-5', 22,
+    12, 'Y', 'N',  -- Reference 12 = Number
+    0, 'U'
+);
+```
+
+**Common AD_Reference_ID values:**
+- `10` = String
+- `11` = Integer  
+- `12` = Amount/Number
+- `13` = ID (Foreign Key)
+- `14` = Text (long string)
+- `15` = Date
+- `16` = DateTime
+- `17` = List (dropdown)
+- `18` = Table (foreign key with validation)
+- `19` = TableDir (direct table reference)
+- `20` = Yes/No
+- `22` = Number (without currency)
+
+## Windows and Tabs
+
+### Window Structure
+
+Windows contain tabs, and tabs contain fields:
+
+```
+Window: Sales Order
+├── Tab: Order (header)
+│   ├── Field: Document No
+│   ├── Field: Business Partner
+│   └── Field: Order Date
+└── Tab: Order Lines (detail)
+    ├── Field: Product
+    ├── Field: Quantity
+    └── Field: Price
+```
+
+### Creating a Window
+
+```sql
+INSERT INTO AD_Window (
+    AD_Window_ID, Name, Description,
+    WindowType, EntityType, IsBetaFunctionality
+) VALUES (
+    200001, 'Product Ratings',
+    'Manage customer product ratings',
+    'M', 'U', 'N'  -- M = Maintain (standard window)
+);
+```
+
+### Creating a Tab
+
+```sql
+INSERT INTO AD_Tab (
+    AD_Tab_ID, AD_Window_ID, Name,
+    AD_Table_ID, TabLevel, SeqNo,
+    IsSingleRow, HasTree, EntityType
+) VALUES (
+    200001, 200001, 'Product Rating',
+    200001, 0, 10,
+    'Y', 'N', 'U'
+);
+```
+
+### Creating Fields
+
+```sql
+INSERT INTO AD_Field (
+    AD_Field_ID, AD_Tab_ID, AD_Column_ID,
+    Name, DisplayLength, SeqNo,
+    IsSameLine, IsDisplayed, IsReadOnly,
+    EntityType
+) VALUES (
+    200101, 200001, 200101,
+    'Rating', 10, 10,
+    'N', 'Y', 'N',
+    'U'
+);
+```
+
+## Display Logic
+
+Display logic controls field visibility based on context:
+
+```sql
+-- Show field only when DocStatus = 'DR' (Draft)
+@DocStatus@='DR'
+
+-- Show field when IsSOTrx = 'Y' (Sales Transaction)
+@IsSOTrx@='Y'
+
+-- Show field when PaymentRule is not Cash
+@PaymentRule@!='B'
+
+-- Complex condition
+@IsSOTrx@='Y' & @DocStatus@='CO'
+```
+
+## Read-Only Logic
+
+Read-only logic controls when fields are editable:
+
+```sql
+-- Read-only after document is processed
+@Processed@='Y'
+
+-- Read-only unless user is Sales Rep
+@#AD_Role_ID@!=1000000
+
+-- Read-only for completed documents
+@DocStatus@='CO' | @DocStatus@='CL'
+```
+
+## Default Value Logic
+
+Set default values using SQL or context variables:
+
+```sql
+-- Current date
+@#Date@
+
+-- Current organization
+@#AD_Org_ID@
+
+-- Current user
+@#AD_User_ID@
+
+-- SQL default
+@SQL=SELECT C_Currency_ID FROM C_AcctSchema WHERE C_AcctSchema_ID=@#C_AcctSchema_ID@
+```
+
+## Validation Rules
+
+Validation rules filter dropdown lists:
+
+```sql AD_Val_Rule
+-- Show only active products
+M_Product.IsActive='Y'
+
+-- Show products for current price list
+EXISTS (SELECT 1 FROM M_ProductPrice pp 
+        WHERE pp.M_Product_ID=M_Product.M_Product_ID 
+        AND pp.M_PriceList_Version_ID=@#M_PriceList_Version_ID@)
+
+-- Show business partners by type
+C_BPartner.IsCustomer='Y' AND C_BPartner.IsActive='Y'
+```
+
+## Model Class Usage
+
+Working with generated model classes:
+
+```java
+import org.compiere.model.*;
+import org.compiere.util.Env;
+import java.util.Properties;
+
+public class OrderExample {
+    
+    public void createOrder(Properties ctx, String trxName) {
+        // Create new order
+        MOrder order = new MOrder(ctx, 0, trxName);
+        order.setC_BPartner_ID(103); // Set business partner
+        order.setC_DocTypeTarget_ID(130); // Standard Order
+        order.setDateOrdered(new Timestamp(System.currentTimeMillis()));
+        order.setDatePromised(new Timestamp(System.currentTimeMillis()));
+        order.saveEx();
+        
+        // Add order line
+        MOrderLine line = new MOrderLine(order);
+        line.setM_Product_ID(123); // Product ID
+        line.setQtyEntered(new BigDecimal("10"));
+        line.setPrice(); // Calculates price from price list
+        line.saveEx();
+        
+        // Complete the order
+        order.processIt(DocAction.ACTION_Complete);
+        order.saveEx();
+    }
+    
+    public void queryOrders(Properties ctx, String trxName) {
+        // Query orders using Query API
+        List<MOrder> orders = new Query(ctx, MOrder.Table_Name, 
+                "C_BPartner_ID=? AND DocStatus=?", trxName)
+            .setParameters(103, "CO")
+            .setOrderBy("DateOrdered DESC")
+            .list();
+        
+        for (MOrder order : orders) {
+            System.out.println("Order: " + order.getDocumentNo() + 
+                             " Total: " + order.getGrandTotal());
+        }
+    }
+}
+```
+
+## Benefits of Model-Driven Architecture
+
+<CardGroup cols={2}>
+
+<Card title="Customization Without Code" icon="wand-magic-sparkles">
+  Modify UI, add fields, and change behavior through metadata
+</Card>
+
+<Card title="Automatic Code Generation" icon="code">
+  Model classes generated automatically from dictionary
+</Card>
+
+<Card title="Database Independence" icon="database">
+  Abstract database layer works with PostgreSQL and Oracle
+</Card>
+
+<Card title="Multi-Tenancy" icon="building">
+  Client and organization isolation built into framework
+</Card>
+
+</CardGroup>
+
+<Note>
+Changes to the Application Dictionary should be packaged as **migration scripts** in the `migration/` directory using the format `<version>/postgresql/NNNN_description.sql`.
+</Note>

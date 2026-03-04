@@ -1,0 +1,561 @@
+---
+title: Process API
+description: Complete reference for developing server processes in iDempiere
+---
+
+## Overview
+
+iDempiere processes are server-side operations that execute business logic, data transformations, and batch operations. The process framework provides transaction management, parameter handling, and logging capabilities.
+
+**Base Package:** `org.compiere.process`
+
+**Source Files:**
+- `org.adempiere.base/src/org/compiere/process/ProcessCall.java`
+- `org.adempiere.base/src/org/compiere/process/SvrProcess.java`
+
+## ProcessCall Interface
+
+The `ProcessCall` interface defines the contract for all executable processes.
+
+**Package:** `org.compiere.process`
+
+### Interface Methods
+
+#### startProcess
+
+```java
+public boolean startProcess(Properties ctx, ProcessInfo pi, Trx trx)
+```
+
+<ParamField path="ctx" type="Properties" required>
+  Context containing session and environment variables
+</ParamField>
+
+<ParamField path="pi" type="ProcessInfo" required>
+  Process information including parameters, record selection, and results
+</ParamField>
+
+<ParamField path="trx" type="Trx">
+  Transaction to use (null for auto-created local transaction)
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  true if process completed successfully, false otherwise
+</ResponseField>
+
+This method is called by the framework to execute the process.
+
+#### setProcessUI
+
+```java
+public void setProcessUI(IProcessUI processUI)
+```
+
+<ParamField path="processUI" type="IProcessUI" required>
+  User interface for process interaction (logging, asking questions)
+</ParamField>
+
+Sets the UI interface for user interaction during process execution.
+
+## SvrProcess Base Class
+
+`SvrProcess` is the abstract base class that implements `ProcessCall` and provides the standard framework for process development.
+
+**Package:** `org.compiere.process`
+
+**Annotation:** `@org.adempiere.base.annotation.Process`
+
+### Abstract Methods
+
+You must implement these methods in your process class:
+
+#### prepare
+
+```java
+protected abstract void prepare()
+```
+
+Called before process execution to extract and validate parameters.
+
+**Example:**
+
+```java
+private int p_C_BPartner_ID = 0;
+private Timestamp p_DateFrom = null;
+private Timestamp p_DateTo = null;
+private boolean p_IsSOTrx = true;
+
+@Override
+protected void prepare() {
+    ProcessInfoParameter[] para = getParameter();
+    for (int i = 0; i < para.length; i++) {
+        String name = para[i].getParameterName();
+        if (para[i].getParameter() == null) {
+            ; // null parameter
+        }
+        else if (name.equals("C_BPartner_ID")) {
+            p_C_BPartner_ID = para[i].getParameterAsInt();
+        }
+        else if (name.equals("DateOrdered")) {
+            p_DateFrom = (Timestamp)para[i].getParameter();
+            p_DateTo = (Timestamp)para[i].getParameter_To();
+        }
+        else if (name.equals("IsSOTrx")) {
+            p_IsSOTrx = "Y".equals(para[i].getParameter());
+        }
+        else {
+            log.log(Level.SEVERE, "Unknown Parameter: " + name);
+        }
+    }
+}
+```
+
+<Note>
+Starting from iDempiere 7.1, you can use the `@Parameter` annotation to automatically inject parameters as class fields, eliminating the need for manual parameter extraction.
+</Note>
+
+**Using @Parameter Annotation:**
+
+```java
+import org.adempiere.base.annotation.Parameter;
+
+@Parameter(name = "C_BPartner_ID")
+private int p_C_BPartner_ID;
+
+@Parameter(name = "DateOrdered")
+private Timestamp p_DateFrom;
+
+@Parameter(name = "DateOrdered", isRange = true)
+private Timestamp p_DateTo;
+
+@Parameter(name = "IsSOTrx")
+private boolean p_IsSOTrx;
+
+@Override
+protected void prepare() {
+    // Parameters are automatically injected - no manual extraction needed
+    // You can add additional validation here if needed
+}
+```
+
+#### doIt
+
+```java
+protected abstract String doIt() throws Exception
+```
+
+<ResponseField name="return" type="String">
+  Success message to display to user (variables are parsed with Msg.parseTranslation)
+</ResponseField>
+
+<ResponseField name="throws" type="Exception">
+  Any exception to abort process and rollback transaction
+</ResponseField>
+
+Contains the main process logic.
+
+**Example:**
+
+```java
+@Override
+protected String doIt() throws Exception {
+    if (p_C_BPartner_ID <= 0) {
+        throw new AdempiereUserError("@FillMandatory@ @C_BPartner_ID@");
+    }
+    
+    int count = 0;
+    StringBuilder sql = new StringBuilder()
+        .append("SELECT C_Order_ID FROM C_Order ")
+        .append("WHERE C_BPartner_ID=? ")
+        .append("AND IsSOTrx=? ")
+        .append("AND DocStatus='CO'");
+    
+    if (p_DateFrom != null && p_DateTo != null) {
+        sql.append(" AND DateOrdered BETWEEN ? AND ?");
+    }
+    
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+    try {
+        pstmt = DB.prepareStatement(sql.toString(), get_TrxName());
+        pstmt.setInt(1, p_C_BPartner_ID);
+        pstmt.setString(2, p_IsSOTrx ? "Y" : "N");
+        if (p_DateFrom != null && p_DateTo != null) {
+            pstmt.setTimestamp(3, p_DateFrom);
+            pstmt.setTimestamp(4, p_DateTo);
+        }
+        
+        rs = pstmt.executeQuery();
+        while (rs.next()) {
+            int orderId = rs.getInt(1);
+            processOrder(orderId);
+            count++;
+        }
+    } finally {
+        DB.close(rs, pstmt);
+    }
+    
+    return "@Processed@ " + count + " @C_Order_ID@";
+}
+```
+
+### Optional Hook Methods
+
+#### postProcess
+
+```java
+protected void postProcess(boolean success)
+```
+
+<ParamField path="success" type="boolean">
+  true if the process completed successfully
+</ParamField>
+
+Called after transaction commit/rollback, outside the transaction scope. Use this for operations that should not be part of the main transaction.
+
+**Example:**
+
+```java
+@Override
+protected void postProcess(boolean success) {
+    if (success) {
+        // Send email notification (outside transaction)
+        sendNotificationEmail();
+        
+        // Open a window to display results
+        // This is safe here since UI operations should be outside transaction
+    }
+}
+```
+
+### Inherited Methods
+
+#### Get Context and Transaction
+
+```java
+protected Properties getCtx()
+protected String get_TrxName()
+```
+
+<ResponseField name="return" type="Properties | String">
+  Current context or transaction name
+</ResponseField>
+
+#### Get Process Info
+
+```java
+protected ProcessInfo getProcessInfo()
+protected ProcessInfoParameter[] getParameter()
+protected int getRecord_ID()
+protected int getTable_ID()
+```
+
+<ResponseField name="return" type="ProcessInfo | ProcessInfoParameter[] | int">
+  Process information, parameters, or identifiers
+</ResponseField>
+
+#### Transaction Control
+
+```java
+protected void commitEx() throws SQLException
+protected void rollback()
+```
+
+<ResponseField name="commitEx.throws" type="SQLException">
+  Thrown if commit fails
+</ResponseField>
+
+Manual transaction control methods.
+
+<Warning>
+In most cases, you should NOT manually commit or rollback. The framework handles this automatically. Only use these methods when you need explicit control over transaction boundaries.
+</Warning>
+
+#### Logging Methods
+
+```java
+protected void addLog(String message)
+protected void addLog(int id, Timestamp date, BigDecimal number, String msg)
+protected void addLog(int id, Timestamp date, BigDecimal number, String msg, 
+                      int tableId, int recordId)
+protected void addBufferLog(int id, Timestamp date, BigDecimal number, String msg,
+                            int tableId, int recordId)
+```
+
+<ParamField path="id" type="int">
+  Line number or sequence
+</ParamField>
+
+<ParamField path="date" type="Timestamp">
+  Date for the log entry
+</ParamField>
+
+<ParamField path="number" type="BigDecimal">
+  Numeric value (amount, quantity, etc.)
+</ParamField>
+
+<ParamField path="msg" type="String">
+  Message text
+</ParamField>
+
+<ParamField path="tableId" type="int">
+  Table ID for drill-down
+</ParamField>
+
+<ParamField path="recordId" type="int">
+  Record ID for drill-down
+</ParamField>
+
+Add entries to the process log that will be displayed to the user.
+
+**Example:**
+
+```java
+@Override
+protected String doIt() throws Exception {
+    int count = 0;
+    PreparedStatement pstmt = null;
+    ResultSet rs = null;
+    
+    try {
+        pstmt = DB.prepareStatement(
+            "SELECT C_Order_ID, DocumentNo, GrandTotal FROM C_Order WHERE C_BPartner_ID=?",
+            get_TrxName()
+        );
+        pstmt.setInt(1, p_C_BPartner_ID);
+        rs = pstmt.executeQuery();
+        
+        while (rs.next()) {
+            int orderId = rs.getInt(1);
+            String docNo = rs.getString(2);
+            BigDecimal total = rs.getBigDecimal(3);
+            
+            processOrder(orderId);
+            
+            // Add log entry with drill-down link
+            addLog(count, null, total, "Processed: " + docNo, 
+                   MOrder.Table_ID, orderId);
+            count++;
+        }
+    } finally {
+        DB.close(rs, pstmt);
+    }
+    
+    return count + " orders processed";
+}
+```
+
+#### Status Bar Updates
+
+```java
+protected void statusUpdate(String message)
+```
+
+<ParamField path="message" type="String">
+  Status message to display in UI
+</ParamField>
+
+Update the status bar during long-running processes.
+
+## Complete Process Example
+
+```java
+package com.example.process;
+
+import java.math.BigDecimal;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.util.logging.Level;
+
+import org.adempiere.exceptions.AdempiereUserError;
+import org.compiere.model.MOrder;
+import org.compiere.model.MOrderLine;
+import org.compiere.process.ProcessInfoParameter;
+import org.compiere.process.SvrProcess;
+import org.compiere.util.DB;
+
+/**
+ * Update Order Prices
+ * 
+ * Process to update order line prices based on current price list
+ */
+public class UpdateOrderPrices extends SvrProcess {
+    
+    /** Business Partner */
+    private int p_C_BPartner_ID = 0;
+    /** Sales Transaction */
+    private boolean p_IsSOTrx = true;
+    /** Date Range */
+    private Timestamp p_DateFrom = null;
+    private Timestamp p_DateTo = null;
+    
+    /**
+     * Prepare - extract parameters
+     */
+    @Override
+    protected void prepare() {
+        ProcessInfoParameter[] para = getParameter();
+        for (int i = 0; i < para.length; i++) {
+            String name = para[i].getParameterName();
+            if (para[i].getParameter() == null)
+                ;
+            else if (name.equals("C_BPartner_ID"))
+                p_C_BPartner_ID = para[i].getParameterAsInt();
+            else if (name.equals("IsSOTrx"))
+                p_IsSOTrx = "Y".equals(para[i].getParameter());
+            else if (name.equals("DateOrdered")) {
+                p_DateFrom = (Timestamp)para[i].getParameter();
+                p_DateTo = (Timestamp)para[i].getParameter_To();
+            }
+            else
+                log.log(Level.SEVERE, "Unknown Parameter: " + name);
+        }
+    }
+    
+    /**
+     * Process - update order prices
+     */
+    @Override
+    protected String doIt() throws Exception {
+        // Validation
+        if (p_C_BPartner_ID <= 0)
+            throw new AdempiereUserError("@FillMandatory@ @C_BPartner_ID@");
+        
+        int orderCount = 0;
+        int lineCount = 0;
+        
+        // Find orders
+        StringBuilder sql = new StringBuilder()
+            .append("SELECT C_Order_ID, DocumentNo ")
+            .append("FROM C_Order ")
+            .append("WHERE C_BPartner_ID=? ")
+            .append("AND IsSOTrx=? ")
+            .append("AND DocStatus IN ('DR','IP') ");
+        
+        if (p_DateFrom != null && p_DateTo != null)
+            sql.append("AND DateOrdered BETWEEN ? AND ? ");
+        
+        sql.append("ORDER BY DateOrdered");
+        
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        
+        try {
+            pstmt = DB.prepareStatement(sql.toString(), get_TrxName());
+            pstmt.setInt(1, p_C_BPartner_ID);
+            pstmt.setString(2, p_IsSOTrx ? "Y" : "N");
+            if (p_DateFrom != null && p_DateTo != null) {
+                pstmt.setTimestamp(3, p_DateFrom);
+                pstmt.setTimestamp(4, p_DateTo);
+            }
+            
+            rs = pstmt.executeQuery();
+            while (rs.next()) {
+                int orderId = rs.getInt(1);
+                String docNo = rs.getString(2);
+                
+                statusUpdate("Processing: " + docNo);
+                
+                int lines = updateOrderLines(orderId);
+                if (lines > 0) {
+                    addLog(orderCount, null, BigDecimal.valueOf(lines), 
+                           "Updated: " + docNo, MOrder.Table_ID, orderId);
+                    orderCount++;
+                    lineCount += lines;
+                }
+            }
+        } finally {
+            DB.close(rs, pstmt);
+        }
+        
+        return "@Updated@ " + orderCount + " @C_Order_ID@, " + 
+               lineCount + " @C_OrderLine_ID@";
+    }
+    
+    /**
+     * Update prices for all lines in an order
+     */
+    private int updateOrderLines(int orderId) throws Exception {
+        MOrder order = new MOrder(getCtx(), orderId, get_TrxName());
+        MOrderLine[] lines = order.getLines();
+        int count = 0;
+        
+        for (MOrderLine line : lines) {
+            if (line.getM_Product_ID() > 0) {
+                BigDecimal oldPrice = line.getPriceActual();
+                
+                // Recalculate price from price list
+                line.setPrice();
+                
+                BigDecimal newPrice = line.getPriceActual();
+                
+                if (oldPrice.compareTo(newPrice) != 0) {
+                    line.saveEx();
+                    count++;
+                    
+                    log.fine("Updated line " + line.getLine() + 
+                            ": " + oldPrice + " -> " + newPrice);
+                }
+            }
+        }
+        
+        // Recalculate order totals if lines were updated
+        if (count > 0) {
+            order.saveEx();
+        }
+        
+        return count;
+    }
+    
+    /**
+     * Post process - send notifications
+     */
+    @Override
+    protected void postProcess(boolean success) {
+        if (success) {
+            log.info("Price update completed successfully");
+            // Could send email notification here
+        }
+    }
+}
+```
+
+## Process Registration
+
+To make your process available in iDempiere:
+
+1. **Compile** your process class and include it in a plugin/jar
+2. **Register in Application Dictionary:**
+   - Go to **System Admin** → **General Rules** → **Process**
+   - Create new process record
+   - Set **Classname** to your process class (e.g., `com.example.process.UpdateOrderPrices`)
+   - Define parameters in **Process Parameter** tab
+3. **Add to Menu** or assign to button/toolbar
+
+## Process Events
+
+The process framework fires OSGi events at key points:
+
+- `IEventTopics.BEFORE_PROCESS` - Before prepare() and doIt()
+- `IEventTopics.AFTER_PROCESS` - After doIt() success
+- `IEventTopics.POST_PROCESS` - After transaction commit (corresponds to postProcess())
+
+You can listen to these events using Event Handlers.
+
+## Best Practices
+
+1. **Parameter Validation:** Always validate parameters in `prepare()` or at the start of `doIt()`
+2. **Transaction Management:** Let the framework handle transactions unless you have specific needs
+3. **Logging:** Use `addLog()` for user-facing information, `log` for debugging
+4. **Error Handling:** Throw exceptions with user-friendly messages using `@Variable@` syntax
+5. **Performance:** For long operations, update status with `statusUpdate()`
+6. **Resource Cleanup:** Always use try-finally blocks for JDBC resources
+7. **Commit Scope:** Keep transactions as short as possible
+8. **Use @Parameter:** For iDempiere 7.1+, use annotation-based parameter injection
+
+## See Also
+
+- [Model API](/api/model-api) - Working with persistent objects
+- [Callout API](/api/callout-api) - Field validation
+- [Factory Pattern](/api/factory-pattern) - Process factories

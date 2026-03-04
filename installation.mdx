@@ -1,0 +1,767 @@
+---
+title: Installation Guide
+description: Complete guide to installing and configuring iDempiere on your server
+---
+
+This guide covers installing iDempiere on Linux, Windows, and macOS systems with PostgreSQL or Oracle databases.
+
+## System Requirements
+
+Before installing iDempiere, ensure your system meets these requirements:
+
+### Hardware Requirements
+
+<Info>
+  These are minimum requirements. Production systems should have significantly more resources based on user count and transaction volume.
+</Info>
+
+- **CPU**: 2+ cores (4+ recommended for production)
+- **RAM**: 4GB minimum (8GB+ recommended)
+- **Disk Space**: 10GB minimum (SSD recommended for production)
+- **Network**: Static IP recommended for server installations
+
+### Software Requirements
+
+<CardGroup cols={2}>
+  <Card title="Java" icon="mug-hot">
+    **Java Development Kit (JDK) 17 or later**
+    
+    - OpenJDK 17+ (recommended)
+    - Oracle JDK 17+
+    - Amazon Corretto 17+
+  </Card>
+  
+  <Card title="Database" icon="database">
+    **PostgreSQL 12+ (recommended)**
+    
+    OR
+    
+    **Oracle 19c+**
+    
+    PostgreSQL is recommended for most deployments due to no licensing costs.
+  </Card>
+</CardGroup>
+
+### Supported Operating Systems
+
+- Linux (Ubuntu 20.04+, CentOS 7+, Debian 10+, RHEL 8+)
+- Windows Server 2016+, Windows 10/11
+- macOS 10.15+
+
+## Pre-Installation Setup
+
+### Install Java
+
+<Tabs>
+  <Tab title="Linux (Ubuntu/Debian)">
+    ```bash
+    # Update package list
+    sudo apt update
+    
+    # Install OpenJDK 17
+    sudo apt install openjdk-17-jdk
+    
+    # Verify installation
+    java -version
+    javac -version
+    
+    # Set JAVA_HOME (add to ~/.bashrc or /etc/environment)
+    export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+    export PATH=$PATH:$JAVA_HOME/bin
+    ```
+  </Tab>
+  
+  <Tab title="Linux (CentOS/RHEL)">
+    ```bash
+    # Install OpenJDK 17
+    sudo yum install java-17-openjdk java-17-openjdk-devel
+    
+    # Verify installation
+    java -version
+    
+    # Set JAVA_HOME
+    export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+    export PATH=$PATH:$JAVA_HOME/bin
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    1. Download OpenJDK 17 from [Adoptium](https://adoptium.net/)
+    2. Run the installer and follow the wizard
+    3. Set environment variables:
+       - `JAVA_HOME`: `C:\Program Files\Eclipse Adoptium\jdk-17`
+       - Add to `PATH`: `%JAVA_HOME%\bin`
+    4. Verify in Command Prompt:
+       ```cmd
+       java -version
+       ```
+  </Tab>
+  
+  <Tab title="macOS">
+    ```bash
+    # Using Homebrew
+    brew install openjdk@17
+    
+    # Link it
+    sudo ln -sfn /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk \
+      /Library/Java/JavaVirtualMachines/openjdk-17.jdk
+    
+    # Add to ~/.zshrc or ~/.bash_profile
+    export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-17.jdk/Contents/Home
+    export PATH=$PATH:$JAVA_HOME/bin
+    
+    # Verify
+    java -version
+    ```
+  </Tab>
+</Tabs>
+
+### Install and Configure PostgreSQL
+
+<Tabs>
+  <Tab title="Linux (Ubuntu/Debian)">
+    ```bash
+    # Install PostgreSQL
+    sudo apt install postgresql postgresql-contrib
+    
+    # Start PostgreSQL service
+    sudo systemctl start postgresql
+    sudo systemctl enable postgresql
+    
+    # Create database and user for iDempiere
+    sudo -u postgres psql
+    ```
+    
+    In the PostgreSQL prompt:
+    ```sql
+    -- Create database user
+    CREATE USER idempiere WITH PASSWORD 'your_strong_password';
+    
+    -- Create database
+    CREATE DATABASE idempiere OWNER idempiere;
+    
+    -- Grant privileges
+    GRANT ALL PRIVILEGES ON DATABASE idempiere TO idempiere;
+    
+    -- Exit
+    \q
+    ```
+    
+    Configure PostgreSQL to accept connections:
+    ```bash
+    # Edit pg_hba.conf
+    sudo nano /etc/postgresql/14/main/pg_hba.conf
+    
+    # Add this line (adjust for your network):
+    # host    idempiere    idempiere    127.0.0.1/32    md5
+    
+    # Edit postgresql.conf for remote access (optional)
+    sudo nano /etc/postgresql/14/main/postgresql.conf
+    # Uncomment and set: listen_addresses = '*'
+    
+    # Restart PostgreSQL
+    sudo systemctl restart postgresql
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    1. Download PostgreSQL from [postgresql.org](https://www.postgresql.org/download/windows/)
+    2. Run the installer:
+       - Choose installation directory
+       - Select components (PostgreSQL Server, pgAdmin, Command Line Tools)
+       - Set superuser password
+       - Use default port 5432
+    3. Open pgAdmin or use SQL Shell (psql):
+    
+    ```sql
+    -- Create user and database
+    CREATE USER idempiere WITH PASSWORD 'your_strong_password';
+    CREATE DATABASE idempiere OWNER idempiere;
+    GRANT ALL PRIVILEGES ON DATABASE idempiere TO idempiere;
+    ```
+  </Tab>
+  
+  <Tab title="macOS">
+    ```bash
+    # Using Homebrew
+    brew install postgresql@14
+    
+    # Start PostgreSQL
+    brew services start postgresql@14
+    
+    # Create user and database
+    psql postgres
+    ```
+    
+    In PostgreSQL:
+    ```sql
+    CREATE USER idempiere WITH PASSWORD 'your_strong_password';
+    CREATE DATABASE idempiere OWNER idempiere;
+    GRANT ALL PRIVILEGES ON DATABASE idempiere TO idempiere;
+    \q
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Use a strong, unique password for the database user. This password will be used during iDempiere setup.
+</Warning>
+
+## Installing iDempiere
+
+### Download iDempiere
+
+<Steps>
+  <Step title="Get the Latest Release">
+    Download the latest stable version:
+    
+    **Option 1: Direct Download**
+    
+    Visit [iDempiere Downloads](https://www.idempiere.org/download) and download the server package.
+    
+    **Option 2: Command Line**
+    
+    ```bash
+    # Create installation directory
+    mkdir -p /opt/idempiere
+    cd /opt/idempiere
+    
+    # Download latest release (check website for current version)
+    wget https://sourceforge.net/projects/idempiere/files/v11/server/iDempiere_11.0.0_server.zip
+    
+    # Or use curl
+    curl -L -o iDempiere_server.zip \
+      https://sourceforge.net/projects/idempiere/files/latest/download
+    ```
+  </Step>
+  
+  <Step title="Extract the Archive">
+    ```bash
+    # Extract
+    unzip iDempiere_*.zip
+    
+    # Make scripts executable (Linux/macOS)
+    find . -name '*.sh' -exec chmod +x {} \;
+    
+    # Set ownership (Linux, optional)
+    sudo chown -R idempiere:idempiere /opt/idempiere
+    ```
+    
+    <Info>
+      On Windows, extract using Windows Explorer or 7-Zip to `C:\idempiere`
+    </Info>
+  </Step>
+</Steps>
+
+### Run the Setup Wizard
+
+<Steps>
+  <Step title="Launch Setup">
+    <Tabs>
+      <Tab title="Linux/macOS">
+        ```bash
+        cd /opt/idempiere/idempiere-server
+        ./setup.sh
+        ```
+      </Tab>
+      
+      <Tab title="Windows">
+        ```cmd
+        cd C:\idempiere\idempiere-server
+        setup.bat
+        ```
+        
+        Or double-click `setup.bat` in Windows Explorer.
+      </Tab>
+    </Tabs>
+    
+    The setup wizard GUI will launch.
+  </Step>
+  
+  <Step title="Configure Java Settings">
+    In the setup wizard:
+    
+    - **Java Home**: Auto-detected from `JAVA_HOME` environment variable
+      - Verify the path is correct
+      - Example: `/usr/lib/jvm/java-17-openjdk-amd64`
+    
+    - **Java Options**: Default settings are usually fine
+      - Adjust `-Xmx` (max heap) for production (e.g., `-Xmx2048m` for 2GB)
+      - Example: `-Xms512m -Xmx1024m -Dfile.encoding=UTF-8`
+  </Step>
+  
+  <Step title="Configure Application Server">
+    Set web server parameters:
+    
+    - **Application Server**: Usually the server's hostname or IP
+      - For local: `localhost` or `127.0.0.1`
+      - For network: Use your server's FQDN or IP address
+    
+    - **Web Port**: `8080` (default) or your preferred port
+    - **SSL Port**: `8443` (default) for HTTPS
+    
+    <Tip>
+      For production, use a reverse proxy (nginx/Apache) in front of iDempiere and set up proper SSL certificates.
+    </Tip>
+  </Step>
+  
+  <Step title="Configure Database Connection">
+    This is the most critical step:
+    
+    **Database Configuration:**
+    
+    - **Database Type**: Select `PostgreSQL` or `Oracle`
+    - **Database Server**: Hostname or IP of database server
+      - Local: `localhost` or `127.0.0.1`
+      - Remote: Your database server address
+    
+    - **Database Port**:
+      - PostgreSQL: `5432` (default)
+      - Oracle: `1521` (default)
+    
+    - **Database Name**:
+      - PostgreSQL: `idempiere` (the database name you created)
+      - Oracle: Service name or SID
+    
+    - **Database User**: `idempiere` (or the username you created)
+    - **Database Password**: The password you set during database setup
+    
+    - **System Password**: Choose a strong password for iDempiere System user
+      - This is used for administrative access
+      - Store it securely - you'll need it for system maintenance
+    
+    <Warning>
+      Click **Test Database** to verify the connection before proceeding. If it fails, check your database settings and firewall rules.
+    </Warning>
+  </Step>
+  
+  <Step title="Configure Mail Server (Optional)">
+    For email notifications and alerts:
+    
+    - **Mail Server**: Your SMTP server (e.g., `smtp.gmail.com`)
+    - **Mail User**: Email account username
+    - **Mail Password**: Email account password
+    - **Admin Email**: Administrator email address
+    
+    <Info>
+      You can skip this and configure email later via System Configurator.
+    </Info>
+  </Step>
+  
+  <Step title="Save Configuration">
+    - Review all settings
+    - Click **Save** or **Test** to validate
+    - The wizard creates two key files:
+      - `idempiereEnv.properties` - Environment configuration
+      - `idempiere.properties` - Application properties
+    
+    Click **Finish** when complete.
+  </Step>
+</Steps>
+
+### Initialize the Database
+
+Now import the iDempiere database schema and seed data:
+
+<Steps>
+  <Step title="Navigate to Utils Directory">
+    <Tabs>
+      <Tab title="Linux/macOS">
+        ```bash
+        cd /opt/idempiere/idempiere-server/utils.unix
+        ```
+      </Tab>
+      
+      <Tab title="Windows">
+        ```cmd
+        cd C:\idempiere\idempiere-server\utils.windows
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Import Initial Database">
+    <Tabs>
+      <Tab title="Linux/macOS">
+        ```bash
+        # Make script executable if needed
+        chmod +x RUN_ImportIdempiere.sh
+        
+        # Run import
+        ./RUN_ImportIdempiere.sh
+        ```
+      </Tab>
+      
+      <Tab title="Windows">
+        ```cmd
+        RUN_ImportIdempiere.bat
+        ```
+      </Tab>
+    </Tabs>
+    
+    This process:
+    - Creates all database tables and schemas
+    - Loads the data dictionary (Application Dictionary)
+    - Imports GardenWorld demo data
+    - Sets up initial system configuration
+    
+    <Info>
+      This may take 5-15 minutes depending on your hardware. Watch for any errors in the output.
+    </Info>
+  </Step>
+  
+  <Step title="Verify Database Import">
+    Check the import completed successfully:
+    
+    ```bash
+    # Check the log file
+    tail -100 ../log/importIdempiere.log
+    ```
+    
+    Look for messages like:
+    - `Import completed successfully`
+    - No SQL errors or connection failures
+  </Step>
+</Steps>
+
+## Starting iDempiere
+
+<Steps>
+  <Step title="Return to Server Directory">
+    ```bash
+    # Linux/macOS
+    cd /opt/idempiere/idempiere-server
+    
+    # Windows
+    cd C:\idempiere\idempiere-server
+    ```
+  </Step>
+  
+  <Step title="Start the Server">
+    <Tabs>
+      <Tab title="Linux/macOS">
+        ```bash
+        # Start in foreground (see console output)
+        ./idempiere-server.sh
+        
+        # Or start in background
+        nohup ./idempiere-server.sh > ../log/server.log 2>&1 &
+        ```
+      </Tab>
+      
+      <Tab title="Windows">
+        ```cmd
+        REM Start in console
+        idempiere-server.bat
+        
+        REM Or install as Windows Service
+        RUN_InstallService.bat
+        net start iDempiere
+        ```
+      </Tab>
+    </Tabs>
+    
+    Watch the console output. Look for:
+    ```
+    OSGi> Server started
+    Jetty Server started on port 8080
+    iDempiere Server ready
+    ```
+  </Step>
+  
+  <Step title="Verify Server is Running">
+    Check these indicators:
+    
+    **Check Process:**
+    ```bash
+    # Linux/macOS
+    ps aux | grep idempiere
+    
+    # Windows Task Manager
+    # Look for java.exe process
+    ```
+    
+    **Check Port Listening:**
+    ```bash
+    # Linux/macOS
+    netstat -tuln | grep 8080
+    
+    # Windows
+    netstat -an | findstr 8080
+    ```
+    
+    **Check Logs:**
+    ```bash
+    # View server logs
+    tail -f ../log/idempiere_*.log
+    ```
+  </Step>
+</Steps>
+
+## Accessing iDempiere
+
+<Steps>
+  <Step title="Open Web Browser">
+    Navigate to the iDempiere web interface:
+    
+    ```
+    http://localhost:8080/webui
+    ```
+    
+    Or use your server's IP/hostname:
+    ```
+    http://your-server-ip:8080/webui
+    ```
+  </Step>
+  
+  <Step title="First Login">
+    Use these default GardenWorld credentials:
+    
+    - **User Name**: `GardenAdmin`
+    - **Password**: `GardenAdmin`
+    - **Language**: `English`
+    - **Role**: `GardenWorld Admin`
+    - **Client**: `GardenWorld`
+    - **Organization**: `HQ`
+    - **Warehouse**: `HQ Warehouse`
+    
+    Click **OK** to login.
+    
+    <Warning>
+      Change default passwords immediately for production systems!
+    </Warning>
+  </Step>
+  
+  <Step title="Verify Installation">
+    After login:
+    
+    1. You should see the dashboard with menu, activities, and KPIs
+    2. Navigate to **System Admin** → **General Rules** → **System**
+    3. Verify system information displays correctly
+    4. Test creating a Sales Order to confirm functionality
+  </Step>
+</Steps>
+
+## Post-Installation Configuration
+
+### Configure as System Service (Linux)
+
+For production systems, set up iDempiere as a systemd service:
+
+```bash
+# Create service file
+sudo nano /etc/systemd/system/idempiere.service
+```
+
+Add this content:
+
+```ini
+[Unit]
+Description=iDempiere ERP Server
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=forking
+User=idempiere
+Group=idempiere
+WorkingDirectory=/opt/idempiere/idempiere-server
+ExecStart=/opt/idempiere/idempiere-server/idempiere-server.sh
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable idempiere
+sudo systemctl start idempiere
+sudo systemctl status idempiere
+```
+
+### Configure Firewall
+
+Open required ports:
+
+<Tabs>
+  <Tab title="Linux (ufw)">
+    ```bash
+    sudo ufw allow 8080/tcp
+    sudo ufw allow 8443/tcp
+    sudo ufw reload
+    ```
+  </Tab>
+  
+  <Tab title="Linux (firewalld)">
+    ```bash
+    sudo firewall-cmd --permanent --add-port=8080/tcp
+    sudo firewall-cmd --permanent --add-port=8443/tcp
+    sudo firewall-cmd --reload
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    ```powershell
+    # Run as Administrator
+    New-NetFirewallRule -DisplayName "iDempiere HTTP" `
+      -Direction Inbound -LocalPort 8080 -Protocol TCP -Action Allow
+    
+    New-NetFirewallRule -DisplayName "iDempiere HTTPS" `
+      -Direction Inbound -LocalPort 8443 -Protocol TCP -Action Allow
+    ```
+  </Tab>
+</Tabs>
+
+### Setup Reverse Proxy with SSL (Recommended)
+
+For production, use nginx or Apache as a reverse proxy with Let's Encrypt SSL:
+
+```nginx
+# /etc/nginx/sites-available/idempiere
+server {
+    listen 80;
+    server_name your-domain.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+    
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+### Database Backup Strategy
+
+Set up automated PostgreSQL backups:
+
+```bash
+#!/bin/bash
+# /opt/idempiere/backup-db.sh
+
+BACKUP_DIR="/opt/idempiere/backups"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+DATABASE="idempiere"
+USER="idempiere"
+
+mkdir -p $BACKUP_DIR
+pg_dump -U $USER -F c -b -v -f "$BACKUP_DIR/idempiere_$TIMESTAMP.backup" $DATABASE
+
+# Keep only last 7 days
+find $BACKUP_DIR -name "*.backup" -mtime +7 -delete
+```
+
+Add to crontab:
+```bash
+# Daily backup at 2 AM
+0 2 * * * /opt/idempiere/backup-db.sh
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Server won't start">
+    **Check logs:**
+    ```bash
+    tail -100 ../log/idempiere*.log
+    ```
+    
+    **Common issues:**
+    - Port 8080 already in use: Change port in setup or stop conflicting service
+    - Java not found: Verify `JAVA_HOME` is set correctly
+    - Database connection failed: Check PostgreSQL is running and credentials are correct
+    - Insufficient memory: Increase heap size in Java options (`-Xmx`)
+  </Accordion>
+  
+  <Accordion title="Can't connect to database">
+    **Verify PostgreSQL is running:**
+    ```bash
+    sudo systemctl status postgresql
+    ```
+    
+    **Test connection manually:**
+    ```bash
+    psql -h localhost -U idempiere -d idempiere
+    ```
+    
+    **Check:**
+    - Database user has correct permissions
+    - `pg_hba.conf` allows connections from iDempiere server
+    - Firewall not blocking port 5432
+  </Accordion>
+  
+  <Accordion title="Web interface not loading">
+    **Verify server is running:**
+    ```bash
+    netstat -tuln | grep 8080
+    ```
+    
+    **Check firewall rules:**
+    - Ensure port 8080 is open
+    - Check reverse proxy configuration if using one
+    
+    **Try different browser:**
+    - Clear browser cache
+    - Try incognito/private mode
+    - Test from a different machine
+  </Accordion>
+  
+  <Accordion title="Import failed">
+    **Check database space:**
+    ```sql
+    SELECT pg_size_pretty(pg_database_size('idempiere'));
+    ```
+    
+    **Verify database encoding:**
+    ```sql
+    SHOW SERVER_ENCODING;
+    -- Should be UTF8
+    ```
+    
+    **Re-run import:**
+    - Drop and recreate database
+    - Run import script again
+    - Check import log for specific errors
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+Now that iDempiere is installed:
+
+<CardGroup cols={2}>
+  <Card title="System Configuration" icon="gear">
+    Configure your organization, users, roles, and basic system settings.
+  </Card>
+  
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Learn essential workflows and create your first business transactions.
+  </Card>
+  
+  <Card title="User Management" icon="users">
+    Set up user accounts, roles, and access permissions for your team.
+  </Card>
+  
+  <Card title="Join Community" icon="comments">
+    Connect with other users on [Mattermost](https://mattermost.idempiere.org/) for support and tips.
+  </Card>
+</CardGroup>
+
+<Tip>
+  For detailed configuration guides, visit the [iDempiere Wiki](https://wiki.idempiere.org/en/Installing_iDempiere).
+</Tip>

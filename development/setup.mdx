@@ -1,0 +1,214 @@
+---
+title: Development Setup
+description: Set up your development environment for iDempiere plugin development
+---
+
+iDempiere uses OSGi (Eclipse Equinox) for its plugin architecture, allowing you to extend the system without modifying core code.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- **Java Development Kit (JDK) 17 or higher**
+- **Apache Maven 3.6+**
+- **Git**
+- **Eclipse IDE** (recommended) or IntelliJ IDEA
+- **PostgreSQL** or **Oracle Database**
+
+## Clone the Repository
+
+<Steps>
+
+<Step title="Fork and clone iDempiere">
+
+First, fork the iDempiere repository on GitHub, then clone your fork:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/idempiere.git
+cd idempiere
+```
+
+</Step>
+
+<Step title="Set up the database">
+
+Create a PostgreSQL database for development:
+
+```bash
+createdb idempiere
+```
+
+Run the initial seed script (located in `db/ddlutils/postgresql/`).
+
+</Step>
+
+<Step title="Configure local properties">
+
+Copy the template configuration file:
+
+```bash
+cp adempiere-local-template.properties adempiere-local.properties
+```
+
+Edit `adempiere-local.properties` with your database credentials:
+
+```properties
+ADEMPIERE_DB_NAME=idempiere
+ADEMPIERE_DB_SERVER=localhost
+ADEMPIERE_DB_PORT=5432
+ADEMPIERE_DB_USER=adempiere
+ADEMPIERE_DB_PASSWORD=adempiere
+```
+
+</Step>
+
+<Step title="Build with Maven">
+
+Build the entire project:
+
+```bash
+mvn clean verify
+```
+
+This will compile all plugins and run tests. The first build may take 10-15 minutes.
+
+</Step>
+
+</Steps>
+
+## IDE Setup
+
+### Eclipse Setup
+
+<Steps>
+
+<Step title="Import as Maven project">
+
+1. Open Eclipse
+2. Go to **File → Import → Maven → Existing Maven Projects**
+3. Select the `idempiere` directory
+4. Eclipse will detect all plugin modules automatically
+
+</Step>
+
+<Step title="Set target platform">
+
+1. Open `org.idempiere.p2.targetplatform/org.idempiere.p2.targetplatform.target`
+2. Wait for Eclipse to resolve dependencies
+3. Click **Set as Active Target Platform**
+
+</Step>
+
+<Step title="Create run configuration">
+
+1. Go to **Run → Run Configurations**
+2. Create a new **OSGi Framework** configuration
+3. Name it "iDempiere Server"
+4. Select all required bundles
+5. Set VM arguments:
+
+```
+-Dosgi.noShutdown=true
+-Dorg.osgi.framework.bootdelegation=*
+-Djetty.home.bundle=org.eclipse.jetty.osgi.boot
+-Djetty.etc.config.urls=etc/jetty.xml,etc/jetty-selector.xml,etc/jetty-deployer.xml
+```
+
+</Step>
+
+</Steps>
+
+### IntelliJ IDEA Setup
+
+<Steps>
+
+<Step title="Open project">
+
+Open the `idempiere` directory as a Maven project in IntelliJ IDEA.
+
+</Step>
+
+<Step title="Configure OSGi framework">
+
+1. Install the **OSGi** plugin from JetBrains
+2. Configure the Equinox framework in project settings
+3. Add all iDempiere bundles to the runtime configuration
+
+</Step>
+
+</Steps>
+
+## Verify Installation
+
+Run the iDempiere server:
+
+```bash
+./RUN_ImportIdempiereDev.sh
+```
+
+Once started, access the web interface at:
+
+```
+http://localhost:8080/webui/
+```
+
+Default credentials:
+- **Username:** SuperUser
+- **Password:** System
+
+## Project Structure
+
+The iDempiere source code is organized into OSGi bundles:
+
+```
+idempiere/
+├── org.adempiere.base/           # Core base functionality
+├── org.adempiere.base.callout/   # Standard callouts
+├── org.adempiere.base.process/   # Standard processes
+├── org.adempiere.ui.zk/          # ZK web UI framework
+├── org.adempiere.server/         # Server components
+├── org.compiere.db.postgresql.provider/  # PostgreSQL provider
+├── org.idempiere.webservices/    # REST/SOAP services
+└── migration/                    # Database migration scripts
+```
+
+Each directory is an OSGi bundle with:
+- `META-INF/MANIFEST.MF` - Bundle metadata
+- `pom.xml` - Maven configuration
+- `build.properties` - Build configuration
+- `OSGI-INF/` - OSGi Declarative Services configuration
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Model-Driven Architecture" icon="sitemap" href="/development/model-driven">
+  Understand iDempiere's dictionary-based architecture
+</Card>
+
+<Card title="Creating Plugins" icon="puzzle-piece" href="/development/creating-plugins">
+  Build your first iDempiere plugin
+</Card>
+
+<Card title="Callouts" icon="phone" href="/development/callouts">
+  Implement field-level business logic
+</Card>
+
+<Card title="Processes" icon="gears" href="/development/processes">
+  Create custom business processes
+</Card>
+
+</CardGroup>
+
+## Contributing
+
+Before contributing code to iDempiere core:
+
+1. Read the [Contributing Guide](https://github.com/idempiere/idempiere/blob/master/CONTRIBUTING.md)
+2. Follow the [Fork and Branch Workflow](https://wiki.idempiere.org/en/Fork_and_Branch_Git_Workflow)
+3. Use the commit format: `IDEMPIERE-[####] [Ticket Description]`
+4. Create a pull request for review
+
+<Tip>
+For questions, join the [iDempiere Mattermost](https://mattermost.idempiere.org/) community.
+</Tip>

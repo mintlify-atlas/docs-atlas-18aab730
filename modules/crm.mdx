@@ -1,0 +1,447 @@
+---
+title: "CRM Module"
+description: "Customer Relationship Management with business partners, contacts, and opportunities in iDempiere"
+---
+
+The CRM (Customer Relationship Management) module in iDempiere helps you manage relationships with customers, vendors, and prospects throughout the entire business lifecycle.
+
+## Overview
+
+iDempiere's CRM capabilities are deeply integrated with the entire business suite, providing a 360-degree view of customer interactions, sales opportunities, and business partner information. The system tracks all touchpoints from initial contact through sales, service, and ongoing relationship management.
+
+<CardGroup cols={2}>
+  <Card title="Business Partners" icon="building" href="#business-partners">
+    Manage customers, vendors, and prospects with complete profiles
+  </Card>
+  <Card title="Contacts & Communication" icon="address-book" href="#contacts-communication">
+    Track contact information and communication history
+  </Card>
+  <Card title="Opportunities" icon="bullseye" href="#sales-opportunities">
+    Manage sales pipeline and opportunity tracking
+  </Card>
+  <Card title="Marketing Campaigns" icon="megaphone" href="#marketing-campaigns">
+    Execute targeted marketing campaigns and track results
+  </Card>
+</CardGroup>
+
+## Business Partners
+
+Business Partners are central to iDempiere's CRM and represent any organization or individual you do business with.
+
+### Partner Types
+
+iDempiere supports multiple partner relationships:
+
+- **Customers** - Organizations or individuals who purchase from you
+- **Vendors** - Suppliers and service providers
+- **Employees** - Internal staff members
+- **Prospects** - Potential customers in your sales pipeline
+- **Combined Roles** - Partners can have multiple roles (e.g., both customer and vendor)
+
+### Creating Business Partners
+
+<Steps>
+  <Step title="Navigate to Business Partner">
+    Go to **Partner Relations** > **Business Partner** and click **New**
+  </Step>
+  <Step title="Enter Basic Information">
+    Provide the business partner name, search key, and tax ID. The value (search key) is used for quick lookups throughout the system
+  </Step>
+  <Step title="Configure Partner Roles">
+    Enable **Customer**, **Vendor**, or **Employee** checkboxes based on the partner's relationship with your organization
+  </Step>
+  <Step title="Add Locations">
+    Create one or more locations with addresses, marking appropriate locations for billing and shipping
+  </Step>
+  <Step title="Set Up Users">
+    Add contacts and users who can access the web portal or receive communications
+  </Step>
+  <Step title="Configure Financial Settings">
+    Set credit limits, payment terms, price lists, and other business rules
+  </Step>
+</Steps>
+
+### Business Partner Groups
+
+Organize partners into groups for consistent management:
+
+- **Default Settings** - Apply standard payment terms, price lists, and credit limits
+- **Default Accounts** - Assign accounting defaults by partner group
+- **Segmentation** - Group customers by industry, size, region, or other criteria
+- **Reporting** - Analyze performance by partner group
+
+<Tip>
+Use business partner groups to standardize settings for similar customers. For example, create a "Retail Customers" group with standard retail terms and pricing.
+</Tip>
+
+## Partner Information Management
+
+### Multiple Locations
+
+Each business partner can have multiple locations for different purposes:
+
+- **Bill To Locations** - Where invoices are sent
+- **Ship To Locations** - Delivery addresses for goods
+- **Pay From Locations** - Where payments originate (for customers)
+- **Remit To Locations** - Where to send payments (for vendors)
+
+### Partner Attributes
+
+Capture detailed partner information:
+
+- **Tax ID / VAT Registration** - Tax identification numbers
+- **DUNS Number** - Dun & Bradstreet identifier
+- **NAICS Code** - Industry classification
+- **URL** - Company website
+- **Reference Number** - External system identifiers
+- **Custom Attributes** - Extend with custom fields for your specific needs
+
+### Partner Banking
+
+Store banking information for electronic payments:
+
+- **Bank Accounts** - Account numbers and routing information
+- **ACH/Wire Details** - Electronic payment routing
+- **Direct Debit** - Authorization for automated payments
+- **Multiple Accounts** - Support for different accounts by currency or purpose
+
+## Contacts & Communication
+
+Manage individual contacts within business partner organizations.
+
+### Contact Management
+
+Each business partner can have unlimited contacts:
+
+<Steps>
+  <Step title="Access Partner Contacts">
+    Open a business partner record and navigate to the **User/Contact** tab
+  </Step>
+  <Step title="Create New Contact">
+    Click **New** and enter contact details including name, title, and department
+  </Step>
+  <Step title="Add Communication Details">
+    Enter email addresses, phone numbers, and other communication preferences
+  </Step>
+  <Step title="Set Contact Roles">
+    Mark contacts for specific purposes: billing notifications, purchase order approval, shipping notifications
+  </Step>
+  <Step title="Portal Access" icon="optional">
+    Enable web portal access to allow contacts to view orders, invoices, and place orders online
+  </Step>
+</Steps>
+
+### Communication Tracking
+
+iDempiere tracks all partner communications:
+
+- **Email History** - Automated tracking of system-generated emails
+- **Requests** - Customer service tickets and support issues
+- **Notes** - Manual comments and observations
+- **Document History** - Complete audit trail of orders, invoices, and transactions
+
+### Request Management
+
+Handle customer inquiries and support issues:
+
+- **Request Types** - Categorize requests (support, inquiry, complaint, suggestion)
+- **Priority Levels** - Urgent, high, medium, low prioritization
+- **Assignment** - Route requests to appropriate departments or users
+- **SLA Tracking** - Monitor response and resolution times
+- **Status Workflow** - Track from open through resolution and close
+
+<Note>
+All requests are automatically linked to the business partner record, providing complete service history visibility.
+</Note>
+
+## Sales Opportunities
+
+Manage your sales pipeline with opportunity tracking and forecasting.
+
+### Opportunity Lifecycle
+
+Track opportunities through your sales process:
+
+<Steps>
+  <Step title="Lead Generation">
+    Create opportunities from marketing campaigns, referrals, or direct inquiries
+  </Step>
+  <Step title="Qualification">
+    Assess opportunity fit, budget, authority, need, and timeline
+  </Step>
+  <Step title="Needs Analysis">
+    Document customer requirements and proposed solutions
+  </Step>
+  <Step title="Proposal">
+    Generate quotes and proposals based on opportunity details
+  </Step>
+  <Step title="Negotiation">
+    Track proposal revisions and negotiation progress
+  </Step>
+  <Step title="Close Won/Lost">
+    Convert successful opportunities to orders or mark as lost with reason
+  </Step>
+</Steps>
+
+### Opportunity Management
+
+Create and track sales opportunities:
+
+- **Expected Revenue** - Forecast amount and currency
+- **Probability** - Win likelihood percentage
+- **Expected Close Date** - Target closure timeline
+- **Sales Stage** - Current position in sales cycle
+- **Sales Representative** - Assigned salesperson
+- **Competitors** - Competitive landscape
+- **Source Campaign** - Marketing campaign attribution
+
+### Pipeline Reporting
+
+Analyze and forecast sales performance:
+
+- **Pipeline Value** - Total value of open opportunities
+- **Weighted Pipeline** - Value adjusted by win probability
+- **Stage Analysis** - Opportunity distribution by sales stage
+- **Win/Loss Analysis** - Conversion rates and loss reasons
+- **Sales Forecasting** - Projected revenue by period
+
+<Tip>
+Regularly review lost opportunities and their reasons to identify process improvements and competitive weaknesses.
+</Tip>
+
+## Marketing Campaigns
+
+Plan, execute, and measure marketing campaigns.
+
+### Campaign Management
+
+Create targeted marketing initiatives:
+
+- **Campaign Type** - Email, direct mail, telemarketing, event, advertising
+- **Target Audience** - Select business partners by groups, regions, or custom criteria
+- **Budget Tracking** - Plan and track campaign costs
+- **Channel Mix** - Multi-channel campaign coordination
+- **Schedule** - Campaign start and end dates
+
+### Campaign Execution
+
+<Steps>
+  <Step title="Define Campaign">
+    Create a new campaign with name, type, budget, and dates
+  </Step>
+  <Step title="Build Target List">
+    Select business partners using filters or manual selection
+  </Step>
+  <Step title="Create Content">
+    Prepare email templates, mail merge documents, or call scripts
+  </Step>
+  <Step title="Execute Campaign">
+    Send communications or schedule activities for the sales team
+  </Step>
+  <Step title="Track Responses">
+    Monitor opens, clicks, responses, and conversions
+  </Step>
+  <Step title="Analyze Results">
+    Review ROI, response rates, and opportunity generation
+  </Step>
+</Steps>
+
+### Campaign Metrics
+
+Measure campaign effectiveness:
+
+- **Response Rate** - Percentage of recipients who responded
+- **Conversion Rate** - Responses that became opportunities or sales
+- **Cost per Lead** - Campaign costs divided by leads generated
+- **ROI** - Return on investment from campaign-sourced revenue
+- **Revenue Attribution** - Orders and revenue linked to campaigns
+
+## Partner Analytics
+
+Gain insights into partner relationships and business performance.
+
+### Customer Value Metrics
+
+iDempiere tracks important customer value indicators:
+
+- **Actual Lifetime Value** - Total historical revenue from customer
+- **Potential Lifetime Value** - Projected future value
+- **Acquisition Cost** - Cost to acquire the customer
+- **Share of Customer** - Percentage of customer's wallet
+- **First Sale Date** - Customer relationship start
+
+### Partner Financials
+
+Monitor financial aspects of partner relationships:
+
+- **Open Balance** - Current outstanding receivables or payables
+- **Credit Limit** - Maximum allowed outstanding amount
+- **Credit Used** - Current credit utilization
+- **Credit Status** - OK, hold, over limit status
+- **Payment Performance** - Average days to pay, discount capture rate
+
+### Sales Analysis
+
+Analyze partner purchasing patterns:
+
+- **Sales History** - Historical orders and invoices by period
+- **Product Mix** - Products and categories purchased
+- **Order Frequency** - Purchase cycle and seasonality
+- **Average Order Value** - Typical transaction size
+- **Margin Analysis** - Profitability by customer
+
+<CardGroup cols={2}>
+  <Card title="Top Customers Report" icon="trophy">
+    Identify best customers by revenue, margin, or growth
+  </Card>
+  <Card title="Customer Aging" icon="clock">
+    Outstanding receivables by aging bucket
+  </Card>
+  <Card title="Lost Customer Analysis" icon="user-slash">
+    Customers who haven't ordered in specified timeframe
+  </Card>
+  <Card title="Credit Status Report" icon="exclamation-triangle">
+    Customers over credit limit or on hold
+  </Card>
+</CardGroup>
+
+## Price Lists and Discounts
+
+Manage customer-specific pricing strategies.
+
+### Price List Management
+
+Create multiple price lists for different market segments:
+
+- **Base Price Lists** - Standard pricing for products
+- **Customer-Specific Lists** - Special pricing for individual customers
+- **Volume Discounts** - Quantity-based pricing breaks
+- **Promotional Pricing** - Time-limited special prices
+- **Multi-Currency** - Prices in multiple currencies
+
+### Discount Schemas
+
+Automate complex discount calculations:
+
+- **Flat Discounts** - Fixed percentage or amount off
+- **Volume Breaks** - Increasing discounts by quantity
+- **Product Category Discounts** - Category-level pricing rules
+- **Business Partner Discounts** - Customer-specific discount percentages
+- **Cumulative Discounts** - Combine multiple discount types
+
+<Note>
+Price lists are associated with business partners to automatically apply correct pricing on orders and quotes.
+</Note>
+
+## Partner Integration
+
+Connect CRM data with other business processes.
+
+### Sales Integration
+
+- **Quote to Order** - Convert opportunities to sales quotes and orders
+- **Order History** - View complete order history from partner record
+- **Credit Checking** - Automatic credit verification on order entry
+- **Special Pricing** - Apply partner-specific pricing automatically
+
+### Service Integration
+
+- **Request Tracking** - Link service requests to business partners
+- **Asset Management** - Track customer-owned assets and equipment
+- **Service Contracts** - Manage warranty and service agreements
+- **RMA Processing** - Handle returns and repairs
+
+### Accounting Integration
+
+- **Receivables/Payables** - Real-time financial position
+- **Payment History** - Complete payment and credit memo history
+- **Statement Generation** - Customer account statements
+- **Collections Management** - Overdue invoice tracking and dunning
+
+## Partner Portal
+
+Enable customer self-service through the web portal.
+
+### Portal Features
+
+- **Order Entry** - Customers can place orders online
+- **Order Status** - Real-time order and shipment tracking
+- **Invoice Access** - Download invoices and statements
+- **Payment Options** - Make online payments
+- **Product Catalog** - Browse products with pricing
+- **Request Submission** - Submit support tickets
+
+### Portal Configuration
+
+<Steps>
+  <Step title="Enable Portal Access">
+    Configure the web portal settings in System Configurator
+  </Step>
+  <Step title="Create Portal Users">
+    In the business partner contact tab, enable web access and set passwords
+  </Step>
+  <Step title="Assign Roles">
+    Grant appropriate portal roles and permissions
+  </Step>
+  <Step title="Configure Branding">
+    Customize portal appearance with your logo and colors
+  </Step>
+  <Step title="Test Access">
+    Verify users can log in and access their information
+  </Step>
+</Steps>
+
+<Tip>
+The web portal reduces customer service workload by enabling customers to check order status, download invoices, and submit requests without contacting your team.
+</Tip>
+
+## Best Practices
+
+### Data Quality
+
+- Establish naming conventions for partner values and search keys
+- Require complete address information including postal codes
+- Validate tax IDs and registration numbers
+- Regularly clean up duplicate partner records
+- Use partner groups consistently for similar customers
+
+### Credit Management
+
+- Review and update credit limits quarterly
+- Monitor credit utilization and adjust limits proactively
+- Configure automatic credit holds for over-limit situations
+- Run aging reports weekly to identify collection issues
+- Document credit decisions and supporting rationale
+
+### Sales Process
+
+- Define clear sales stages aligned with your sales methodology
+- Update opportunity probabilities based on actual win rates
+- Require loss reasons for closed-lost opportunities
+- Review pipeline regularly with sales team
+- Track opportunity age to identify stalled deals
+
+### Communication
+
+- Document all significant partner interactions in requests or notes
+- Assign clear ownership for partner relationships
+- Set up automated email notifications for key events
+- Use request categories to track common issues
+- Monitor and respond to portal submissions promptly
+
+## Related Modules
+
+<CardGroup cols={2}>
+  <Card title="Sales" icon="handshake" href="/modules/sales">
+    Convert opportunities to quotes and sales orders
+  </Card>
+  <Card title="Purchasing" icon="cart-shopping" href="/modules/purchasing">
+    Manage vendor relationships and procurement
+  </Card>
+  <Card title="Accounting" icon="calculator" href="/modules/accounting">
+    Partner financial transactions and balances
+  </Card>
+  <Card title="Workflow" icon="diagram-project" href="/modules/workflow">
+    Automate partner-related business processes
+  </Card>
+</CardGroup>

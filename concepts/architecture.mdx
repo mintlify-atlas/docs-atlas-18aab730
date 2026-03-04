@@ -1,0 +1,449 @@
+---
+title: 'Architecture Overview'
+description: 'Understanding iDempiere OSGi-based modular architecture and design patterns'
+icon: 'diagram-project'
+---
+
+## System Architecture
+
+iDempiere is built on a sophisticated OSGi (Open Services Gateway initiative) framework that enables true modularity, extensibility, and runtime dynamics. The architecture follows enterprise patterns designed for scalability and maintainability.
+
+### Core Architectural Layers
+
+<CardGroup cols={2}>
+  <Card title="Presentation Layer" icon="desktop">
+    ZK-based web UI with responsive design and customizable interfaces
+  </Card>
+  <Card title="Business Logic Layer" icon="gears">
+    Model-driven architecture with persistent objects and business rules
+  </Card>
+  <Card title="Data Access Layer" icon="database">
+    Abstract database interface supporting PostgreSQL and Oracle
+  </Card>
+  <Card title="Integration Layer" icon="plug">
+    REST/SOAP web services and event-driven integration points
+  </Card>
+</CardGroup>
+
+## OSGi Framework Foundation
+
+iDempiere leverages Eclipse Equinox as its OSGi runtime, providing dynamic module management and service-oriented architecture.
+
+### Bundle Structure
+
+Each functional area is packaged as an OSGi bundle with its own manifest:
+
+```xml title="org.adempiere.base/META-INF/MANIFEST.MF"
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: iDempiere Core
+Bundle-SymbolicName: org.adempiere.base;singleton:=true
+Bundle-Version: 13.0.0.qualifier
+Bundle-Activator: org.adempiere.base.BaseActivator
+Service-Component: OSGI-INF/*.xml
+Export-Package: org.compiere.model,
+ org.adempiere.base,
+ org.compiere.util
+Import-Package: org.osgi.framework;version="1.10.0",
+ org.osgi.service.event;version="1.4.1"
+```
+
+<Note>
+The `Bundle-SymbolicName` with `;singleton:=true` ensures only one version of the core bundle is active at runtime, preventing conflicts.
+</Note>
+
+## Extension Point Architecture
+
+iDempiere defines extension points that allow plugins to contribute functionality without modifying core code.
+
+### Defining Extension Points
+
+From `org.adempiere.base/plugin.xml`:
+
+```xml title="plugin.xml - Extension Points"
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <!-- Model Validator Extension Point -->
+   <extension-point 
+      id="org.adempiere.base.ModelValidator" 
+      name="Model Validator" 
+      schema="schema/org.adempiere.base.ModelValidator.exsd"/>
+   
+   <!-- Process Extension Point -->
+   <extension-point 
+      id="org.adempiere.base.Process" 
+      name="Process" 
+      schema="schema/org.adempiere.base.Process.exsd"/>
+   
+   <!-- Callout Extension Point -->
+   <extension-point 
+      id="org.adempiere.base.IColumnCallout" 
+      name="Callout" 
+      schema="schema/org.adempiere.base.Callout.exsd"/>
+   
+   <!-- Payment Processor Extension Point -->
+   <extension-point 
+      id="org.compiere.model.PaymentProcessor" 
+      name="Payment Processor" 
+      schema="schema/org.compiere.model.PaymentProcessor.exsd"/>
+   
+   <!-- Tax Provider Extension Point -->
+   <extension-point 
+      id="org.adempiere.model.ITaxProvider" 
+      name="Tax Provider" 
+      schema="schema/org.adempiere.model.ITaxProvider.exsd"/>
+</plugin>
+```
+
+### Contributing Extensions
+
+Plugins contribute implementations by declaring extensions:
+
+```xml title="Custom Plugin Extension"
+<extension
+   id="org.compiere.model.StandardTaxProvider"
+   name="Standard Tax Provider"
+   point="org.adempiere.model.ITaxProvider">
+   <provider
+      class="org.compiere.model.StandardTaxProvider"
+      priority="0">
+   </provider>
+</extension>
+```
+
+## Service Locator Pattern
+
+iDempiere uses a centralized service locator for discovering and accessing OSGi services dynamically.
+
+### Service Registration
+
+```java title="org.adempiere.base/Service.java"
+package org.adempiere.base;
+
+import org.adempiere.base.ds.DynamicServiceLocator;
+
+/**
+ * Factory for service locators providing access to OSGi services
+ */
+public class Service {
+    private static IServiceLocator theLocator = new DynamicServiceLocator();
+    
+    /**
+     * @return IServiceLocator instance for service discovery
+     */
+    public static IServiceLocator locator() {
+        return theLocator;
+    }
+}
+```
+
+### Using Services
+
+```java
+// Query for all implementations of a service interface
+List<IModelFactory> factories = Service.locator()
+    .list(IModelFactory.class)
+    .getServices();
+
+// Get a specific service
+ITaxProvider taxProvider = Service.locator()
+    .locate(ITaxProvider.class)
+    .getService();
+```
+
+<Info>
+The service locator pattern enables loose coupling between bundles and supports runtime service registration/unregistration.
+</Info>
+
+## Event-Driven Architecture
+
+iDempiere implements a comprehensive event system for decoupled communication between components.
+
+### Event Topics
+
+From `org.adempiere.base.event.IEventTopics`:
+
+```java title="Event Topic Constants"
+public interface IEventTopics {
+    // Persistent Object Events
+    public static final String MODEL_EVENT_PREFIX = "adempiere/po/";
+    public static final String PO_BEFORE_NEW = MODEL_EVENT_PREFIX + "beforeNew";
+    public static final String PO_AFTER_NEW = MODEL_EVENT_PREFIX + "afterNew";
+    public static final String PO_BEFORE_CHANGE = MODEL_EVENT_PREFIX + "beforeChange";
+    public static final String PO_AFTER_CHANGE = MODEL_EVENT_PREFIX + "afterChange";
+    public static final String PO_BEFORE_DELETE = MODEL_EVENT_PREFIX + "beforeDelete";
+    public static final String PO_AFTER_DELETE = MODEL_EVENT_PREFIX + "afterDelete";
+    
+    // Document Events
+    public static final String DOC_EVENT_PREFIX = "adempiere/doc/";
+    public static final String DOC_BEFORE_COMPLETE = DOC_EVENT_PREFIX + "beforeComplete";
+    public static final String DOC_AFTER_COMPLETE = DOC_EVENT_PREFIX + "afterComplete";
+    public static final String DOC_BEFORE_POST = DOC_EVENT_PREFIX + "beforePost";
+    public static final String DOC_AFTER_POST = DOC_EVENT_PREFIX + "afterPost";
+    
+    // System Events
+    public static final String AFTER_LOGIN = "adempiere/afterLogin";
+    public static final String ACCT_FACTS_VALIDATE = "adempiere/acct/factsValidate";
+}
+```
+
+### Publishing Events
+
+```java
+import org.adempiere.base.event.EventManager;
+import org.osgi.service.event.Event;
+
+// Publish an event when a model changes
+Properties ctx = Env.getCtx();
+Event event = EventManager.newEvent(
+    IEventTopics.PO_AFTER_CHANGE,
+    new EventProperty("tableName", "C_Order"),
+    new EventProperty("record", order)
+);
+EventManager.getInstance().sendEvent(event);
+```
+
+### Subscribing to Events
+
+```java
+import org.osgi.service.event.EventHandler;
+
+@Component(service = EventHandler.class)
+public class OrderEventHandler implements EventHandler {
+    
+    @Override
+    public void handleEvent(Event event) {
+        String tableName = (String) event.getProperty("tableName");
+        PO record = (PO) event.getProperty("record");
+        
+        if ("C_Order".equals(tableName)) {
+            // Custom logic for order changes
+            processOrderChange((MOrder) record);
+        }
+    }
+}
+```
+
+<Warning>
+Event handlers should be fast and non-blocking. For long-running operations, dispatch work to a background thread or queue.
+</Warning>
+
+## Model Factory Pattern
+
+iDempiere uses the factory pattern to create persistent objects dynamically based on table names.
+
+### IModelFactory Interface
+
+From `org.adempiere.base.IModelFactory`:
+
+```java title="Model Factory Interface"
+package org.adempiere.base;
+
+import org.compiere.model.PO;
+import java.sql.ResultSet;
+
+/**
+ * Model factory interface for dynamic PO instantiation
+ */
+public interface IModelFactory {
+    /**
+     * Get Persistence Class for Table
+     * @param tableName table name
+     * @return class or null
+     */
+    public Class<?> getClass(String tableName);
+    
+    /**
+     * Get PO Class Instance by ID
+     * @param tableName table name
+     * @param Record_ID record ID
+     * @param trxName transaction name
+     * @return PO for Record or null
+     */
+    public PO getPO(String tableName, int Record_ID, String trxName);
+    
+    /**
+     * Get PO Class Instance by UUID
+     * @param tableName table name
+     * @param Record_UU record UUID
+     * @param trxName transaction name
+     * @return PO for Record or null
+     */
+    public PO getPO(String tableName, String Record_UU, String trxName);
+    
+    /**
+     * Get PO Class Instance from ResultSet
+     * @param tableName table name
+     * @param rs result set
+     * @param trxName transaction
+     * @return PO for Record or null
+     */
+    public PO getPO(String tableName, ResultSet rs, String trxName);
+}
+```
+
+### Custom Model Factory
+
+```java
+public class CustomModelFactory implements IModelFactory {
+    
+    @Override
+    public Class<?> getClass(String tableName) {
+        if ("XX_CustomTable".equals(tableName)) {
+            return MCustomTable.class;
+        }
+        return null;
+    }
+    
+    @Override
+    public PO getPO(String tableName, int Record_ID, String trxName) {
+        if ("XX_CustomTable".equals(tableName)) {
+            return new MCustomTable(Env.getCtx(), Record_ID, trxName);
+        }
+        return null;
+    }
+    
+    // Implement other methods...
+}
+```
+
+## Database Abstraction Layer
+
+iDempiere provides database independence through abstract interfaces, supporting both PostgreSQL and Oracle.
+
+```java
+import org.compiere.util.DB;
+import org.compiere.db.Database;
+
+// Database-agnostic operations
+String sql = "SELECT * FROM C_Order WHERE IsActive=?";
+PreparedStatement pstmt = null;
+ResultSet rs = null;
+try {
+    pstmt = DB.prepareStatement(sql, trxName);
+    pstmt.setString(1, "Y");
+    rs = pstmt.executeQuery();
+    
+    while (rs.next()) {
+        int orderId = rs.getInt("C_Order_ID");
+        // Process order
+    }
+} finally {
+    DB.close(rs, pstmt);
+}
+```
+
+<Accordion title="Database Conversion Functions">
+iDempiere automatically handles SQL differences between databases:
+
+- `DB.TO_DATE()` - Date conversion
+- `DB.TO_CHAR()` - Character conversion  
+- `DB.TRUNC()` - Truncate function
+- `DB.getKeywordMatchingQuery()` - Full-text search syntax
+
+These methods generate database-specific SQL at runtime.
+</Accordion>
+
+## Transaction Management
+
+iDempiere provides explicit transaction control for complex business operations.
+
+```java
+import org.compiere.util.Trx;
+
+String trxName = Trx.createTrxName("OrderProcess");
+Trx trx = Trx.get(trxName, true);
+
+try {
+    // Create order
+    MOrder order = new MOrder(ctx, 0, trxName);
+    order.setC_BPartner_ID(partnerId);
+    order.saveEx();
+    
+    // Create order lines
+    for (OrderLineData data : lineData) {
+        MOrderLine line = new MOrderLine(order);
+        line.setM_Product_ID(data.getProductId());
+        line.setQtyOrdered(data.getQty());
+        line.saveEx();
+    }
+    
+    // Commit transaction
+    trx.commit();
+} catch (Exception e) {
+    trx.rollback();
+    throw e;
+} finally {
+    trx.close();
+}
+```
+
+## Performance Optimization
+
+### Caching Strategy
+
+iDempiere implements multi-level caching:
+
+```java
+import org.compiere.util.CCache;
+import org.idempiere.cache.ImmutableIntPOCache;
+
+// Immutable PO cache for reference data
+private static ImmutableIntPOCache<Integer, MProduct> s_cache = 
+    new ImmutableIntPOCache<>("M_Product", 100);
+
+public static MProduct get(Properties ctx, int M_Product_ID) {
+    Integer key = Integer.valueOf(M_Product_ID);
+    MProduct product = s_cache.get(ctx, key, e -> new MProduct(ctx, e));
+    if (product != null)
+        return product;
+    
+    product = new MProduct(ctx, M_Product_ID, null);
+    s_cache.put(key, product, e -> new MProduct(Env.getCtx(), e));
+    return product;
+}
+```
+
+<Note>
+Reference data (products, business partners, etc.) uses immutable caches that are shared across all users in a client.
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Bundle Design">
+    - Keep bundles focused on single responsibilities
+    - Minimize dependencies between bundles
+    - Use service interfaces instead of direct class references
+    - Declare all exported packages explicitly in MANIFEST.MF
+  </Accordion>
+  
+  <Accordion title="Extension Development">
+    - Always check if an extension point exists before modifying core
+    - Use priority values to control extension execution order
+    - Test extensions in isolated environments before deployment
+    - Document extension dependencies clearly
+  </Accordion>
+  
+  <Accordion title="Event Handling">
+    - Keep event handlers lightweight and fast
+    - Use asynchronous processing for long-running operations
+    - Handle errors gracefully without blocking the event system
+    - Filter events early using OSGi EventHandler properties
+  </Accordion>
+</AccordionGroup>
+
+## Related Topics
+
+<CardGroup cols={3}>
+  <Card title="Data Model" icon="table" href="/concepts/data-model">
+    Persistent objects and database schema
+  </Card>
+  <Card title="OSGi Plugins" icon="puzzle-piece" href="/concepts/osgi-plugins">
+    Creating custom plugins and extensions
+  </Card>
+  <Card title="Multi-Tenancy" icon="users" href="/concepts/multi-tenancy">
+    Client and organization isolation
+  </Card>
+</CardGroup>

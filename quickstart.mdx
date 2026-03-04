@@ -1,80 +1,299 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start Guide
+description: Get started with iDempiere in minutes - from first login to your first business transaction
 ---
 
-## Get started in three steps
+This guide will get you from zero to your first business transaction in iDempiere quickly. Choose the path that works best for you.
 
-Get your documentation site running locally and make your first customization.
+## Option 1: Try the Cloud Test Site (Fastest)
 
-### Step 1: Set up your local environment
+The fastest way to experience iDempiere is through our live cloud test sites - no installation required!
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+<Steps>
+  <Step title="Access the Test Site">
+    Visit the [iDempiere Test Sites](https://www.idempiere.org/test-sites) and select a server.
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    <Info>
+      Test sites are reset regularly and come pre-loaded with GardenWorld demo data.
+    </Info>
+  </Step>
+  
+  <Step title="Log In">
+    Use these default credentials:
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    - **Username**: `GardenAdmin`
+    - **Password**: `GardenAdmin`
+    - **Client**: `GardenWorld`
+    - **Organization**: `HQ`
+    - **Warehouse**: `HQ Warehouse`
+    - **Language**: `English`
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    Click **OK** to proceed to the dashboard.
+  </Step>
+  
+  <Step title="Explore the Dashboard">
+    After login, you'll see the iDempiere dashboard with:
+    
+    - **Menu** - Access all business functions
+    - **Activities** - Recent and favorite items
+    - **Performance Indicators** - Key business metrics
+    - **Running Jobs** - Background processes
+    - **Calendar** - Scheduled activities
+    
+    <Tip>
+      Use the search box in the menu to quickly find any window or process.
+    </Tip>
+  </Step>
+</Steps>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Option 2: Local Installation
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+For a persistent environment with full control, install iDempiere locally.
 
-### Step 3: Go live
+<Warning>
+  You'll need Java 17+ and PostgreSQL 12+ (or Oracle 19c+) installed first.
+</Warning>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+<Steps>
+  <Step title="Download iDempiere">
+    Get the latest stable release:
+    
+    ```bash
+    # Download from the official repository
+    wget https://sourceforge.net/projects/idempiere/files/latest/download
+    ```
+    
+    Or visit [iDempiere Downloads](https://www.idempiere.org/download) for the latest version.
+  </Step>
+  
+  <Step title="Extract and Setup">
+    ```bash
+    # Extract the archive
+    unzip idempiere-server-*.zip
+    cd idempiere-server
+    
+    # Make setup script executable
+    chmod +x setup.sh
+    
+    # Run setup wizard
+    ./setup.sh
+    ```
+  </Step>
+  
+  <Step title="Configure Database Connection">
+    The setup wizard will prompt for:
+    
+    - **Database Type**: PostgreSQL or Oracle
+    - **Database Host**: `localhost` (or your database server)
+    - **Database Port**: `5432` (PostgreSQL) or `1521` (Oracle)
+    - **Database Name**: Name of your database
+    - **Database User**: Username with appropriate permissions
+    - **Database Password**: Database user password
+    - **System Password**: Admin password for iDempiere
+  </Step>
+  
+  <Step title="Initialize the Database">
+    Import the seed database with GardenWorld demo data:
+    
+    ```bash
+    # For PostgreSQL
+    cd utils.unix
+    ./RUN_ImportIdempiere.sh
+    ```
+    
+    This creates the database schema and loads sample data.
+  </Step>
+  
+  <Step title="Start iDempiere">
+    ```bash
+    # Return to main directory
+    cd ..
+    
+    # Start the server
+    ./idempiere-server.sh
+    ```
+    
+    Wait for the message: `iDempiere Server started successfully`
+  </Step>
+  
+  <Step title="Access the Web Interface">
+    Open your browser and navigate to:
+    
+    ```
+    http://localhost:8080/webui
+    ```
+    
+    Login with the same credentials as the cloud test site.
+  </Step>
+</Steps>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  For detailed installation instructions, including Windows setup and advanced configuration, see the [Installation Guide](/installation).
 </Note>
+
+## Your First Business Workflow
+
+Once logged in, try creating your first sales order to understand the core workflow.
+
+<Steps>
+  <Step title="Navigate to Sales Order">
+    - Click the **Menu** button (hamburger icon)
+    - Search for "**Sales Order**" or navigate to:
+      - **Sales Order Management** → **Sales Order**
+    - Click to open the Sales Order window
+  </Step>
+  
+  <Step title="Create a New Order">
+    Click the **New Record** button (document icon with plus sign)
+    
+    The system will:
+    - Auto-generate a document number
+    - Set today's date as order date
+    - Default to your organization
+  </Step>
+  
+  <Step title="Select a Customer">
+    In the **Business Partner** field:
+    
+    1. Click the magnifying glass icon to search
+    2. Select a customer (e.g., "C&W Construction")
+    3. The system auto-fills:
+       - Bill-to and Ship-to addresses
+       - Price list
+       - Payment terms
+       - Salesperson
+  </Step>
+  
+  <Step title="Add Order Lines">
+    Switch to the **Order Line** tab at the bottom:
+    
+    1. Click **New Record** to add a line
+    2. Select a **Product** (e.g., "Azalea Bush")
+    3. Enter **Quantity** (e.g., `10`)
+    4. The system automatically:
+       - Fills in the unit price from the price list
+       - Calculates line total
+       - Checks inventory availability
+    
+    Add more lines as needed.
+  </Step>
+  
+  <Step title="Review and Complete">
+    Return to the **Order** tab (header):
+    
+    1. Review the **Grand Total** (includes taxes)
+    2. Click the **Process** button (gear icon)
+    3. Select **Complete** from the Document Action dropdown
+    4. Click **OK**
+    
+    <Info>
+      Completing the order:
+      - Locks the document from editing
+      - Reserves inventory
+      - Updates accounting
+      - Enables shipment and invoice creation
+    </Info>
+  </Step>
+  
+  <Step title="View the Completed Order">
+    The order status changes to **Completed**. You can now:
+    
+    - **Generate Shipment**: Create a material shipment
+    - **Create Invoice**: Generate a customer invoice
+    - **Print**: Generate PDF of the order
+    - **Copy**: Create a new order from this one
+  </Step>
+</Steps>
+
+## Essential Navigation Tips
+
+<Tip>
+  Master these shortcuts to navigate iDempiere efficiently:
+</Tip>
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt + N` | New record |
+| `Alt + S` | Save record |
+| `Alt + D` | Delete record |
+| `Alt + F` | Find/Search |
+| `Alt + P` | Process/Complete document |
+| `Alt + R` | Refresh |
+| `F1` | Help for current field |
+
+### Window Navigation
+
+- **Tabs**: Use tabs at the bottom to navigate between header and detail records (e.g., Order → Order Lines)
+- **Navigation buttons**: First, Previous, Next, Last, Parent records
+- **Search**: Magnifying glass icon opens lookup windows
+- **Multi-tab**: Hold `Ctrl` while clicking menu items to open multiple windows
+
+### Common Patterns
+
+<AccordionGroup>
+  <Accordion title="Master-Detail Pattern">
+    Most transaction windows use a master-detail pattern:
+    
+    - **Header Tab**: Main document (Order, Invoice, Payment)
+    - **Line Tabs**: Detail items (Order Lines, Invoice Lines)
+    - **Info Tabs**: Additional information (Taxes, Confirmations)
+    
+    Always save the header before adding lines.
+  </Accordion>
+  
+  <Accordion title="Document Processing">
+    Business documents follow a standard lifecycle:
+    
+    1. **Drafted** - In progress, can be edited
+    2. **Completed** - Finalized, posted to accounting
+    3. **Closed** - Fully processed (shipped, invoiced, paid)
+    4. **Voided** - Cancelled with reversal
+    
+    Use the **Process** button (gear icon) to change document status.
+  </Accordion>
+  
+  <Accordion title="Field Context Help">
+    Hover over any field label to see a tooltip. Press `F1` for detailed help about:
+    
+    - Field purpose and usage
+    - Valid values and constraints
+    - Related fields and dependencies
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+Now that you've completed your first order, explore these areas:
+
+<CardGroup cols={2}>
+  <Card title="Complete the Order-to-Cash Cycle" icon="money-bill-trend-up">
+    Create a shipment from your order, then generate an invoice, and finally record payment.
+  </Card>
+  
+  <Card title="Set Up Your Organization" icon="building">
+    Configure your company information, warehouses, users, and roles in System Admin.
+  </Card>
+  
+  <Card title="Explore Reporting" icon="chart-line">
+    Run reports to analyze sales, inventory levels, and financial performance.
+  </Card>
+  
+  <Card title="Configure Business Rules" icon="gears">
+    Set up price lists, payment terms, tax categories, and workflow automation.
+  </Card>
+</CardGroup>
+
+## Getting Help
+
+As you explore iDempiere:
+
+- **In-app Help**: Press `F1` on any field for context-sensitive help
+- **Wiki**: Browse [wiki.idempiere.org](https://wiki.idempiere.org/) for detailed guides
+- **Forum**: Ask questions at [Google Groups](https://groups.google.com/group/idempiere)
+- **Chat**: Join real-time discussions on [Mattermost](https://mattermost.idempiere.org/)
+
+<Tip>
+  The GardenWorld demo data includes complete examples of customers, products, vendors, and transactions - perfect for learning!
+</Tip>

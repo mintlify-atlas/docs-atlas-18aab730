@@ -1,0 +1,323 @@
+---
+title: "Plugin Ecosystem"
+description: "Extend iDempiere with community plugins and learn to create your own"
+---
+
+## iDempiere Plugin System
+
+iDempiere's modular OSGi-based architecture enables a powerful plugin system that allows you to extend and customize functionality without modifying the core codebase.
+
+<Info>
+  Plugins are the recommended way to add custom functionality to iDempiere. They keep your customizations separate from core code, making upgrades easier and enabling community sharing.
+</Info>
+
+## Available Plugins
+
+The iDempiere community maintains a catalog of available plugins for various purposes:
+
+<Card title="Available Plugins" icon="puzzle-piece" href="https://wiki.idempiere.org/en/Category:Available_Plugins">
+  Browse the complete list of community plugins on the iDempiere Wiki
+</Card>
+
+### Plugin Categories
+
+Plugins are available for many purposes:
+
+- **Integration** - Connect iDempiere with external systems (payment gateways, shipping, e-commerce)
+- **Industry-specific** - Vertical solutions for specific business sectors
+- **Functional extensions** - Enhanced reporting, workflows, and business processes
+- **Technical utilities** - Development tools, performance monitoring, system utilities
+- **Localization** - Country-specific requirements, tax systems, and regulations
+- **UI/UX enhancements** - Custom interfaces and user experience improvements
+
+## Using Plugins
+
+### Finding Plugins
+
+<Steps>
+  <Step title="Browse the Plugin Catalog">
+    Visit the [Available Plugins](https://wiki.idempiere.org/en/Category:Available_Plugins) page on the wiki to see what's available.
+  </Step>
+  
+  <Step title="Review Plugin Documentation">
+    Each plugin should have documentation describing:
+    - What functionality it provides
+    - Installation requirements
+    - Configuration steps
+    - Compatibility information
+  </Step>
+  
+  <Step title="Check Compatibility">
+    Verify the plugin is compatible with your iDempiere version before installation.
+  </Step>
+  
+  <Step title="Test in Development">
+    Always test plugins in a development environment before deploying to production.
+  </Step>
+</Steps>
+
+### Installing Plugins
+
+Plugin installation typically involves:
+
+1. **Download** the plugin JAR file(s)
+2. **Deploy** to your iDempiere plugins directory
+3. **Install** via the Plugin Manager in iDempiere
+4. **Configure** according to plugin documentation
+5. **Test** functionality in your environment
+
+<Warning>
+  Always backup your system before installing new plugins, and test thoroughly in a non-production environment first.
+</Warning>
+
+## Developing Plugins
+
+### Why Create a Plugin?
+
+Consider creating a plugin when:
+
+- Adding functionality not suitable for iDempiere core
+- Building industry-specific or company-specific features
+- Integrating with external systems or services
+- Sharing reusable functionality with the community
+- Maintaining customizations separate from core for easier upgrades
+
+### Plugin Development Guidelines
+
+Before developing a plugin, familiarize yourself with the official guidelines:
+
+<Card title="Plugin Guidelines" icon="book-open" href="https://wiki.idempiere.org/en/Plugin_Guidelines">
+  Read the complete plugin development guidelines on the iDempiere Wiki
+</Card>
+
+### Key Guidelines
+
+<AccordionGroup>
+  <Accordion title="Follow OSGi Standards" icon="cube">
+    iDempiere uses OSGi for its modular architecture. Your plugins should:
+    - Be packaged as proper OSGi bundles
+    - Declare dependencies correctly
+    - Use OSGi services for integration
+    - Follow lifecycle management practices
+  </Accordion>
+  
+  <Accordion title="Maintain Compatibility" icon="link">
+    Design plugins to be upgrade-friendly:
+    - Use stable APIs where possible
+    - Minimize dependencies on internal implementation details
+    - Test against multiple iDempiere versions
+    - Document version compatibility clearly
+  </Accordion>
+  
+  <Accordion title="Code Quality" icon="code">
+    Maintain high code quality standards:
+    - Follow iDempiere coding conventions
+    - Include comprehensive testing
+    - Document your code thoroughly
+    - Handle errors gracefully
+  </Accordion>
+  
+  <Accordion title="Documentation" icon="file-lines">
+    Provide complete documentation:
+    - Installation instructions
+    - Configuration guide
+    - User manual for functionality
+    - API documentation if applicable
+    - Troubleshooting tips
+  </Accordion>
+  
+  <Accordion title="Licensing" icon="certificate">
+    Respect licensing requirements:
+    - Use compatible open-source licenses
+    - Clearly state your plugin's license
+    - Respect third-party library licenses
+    - Follow GPL-2.0 guidelines for core integration
+  </Accordion>
+</AccordionGroup>
+
+### Development Best Practices
+
+<Tabs>
+  <Tab title="Architecture">
+    **Design Principles**
+    
+    - Keep plugins focused and modular
+    - Use extension points provided by iDempiere
+    - Implement proper event handlers and callouts
+    - Follow model-view-controller patterns
+    - Design for configurability rather than hard-coding
+    
+    **Integration Points**
+    
+    - Model validators for business logic
+    - Event handlers for system events
+    - Callouts for UI behavior
+    - Processes for batch operations
+    - Forms for custom interfaces
+  </Tab>
+  
+  <Tab title="Development">
+    **Setup Your Environment**
+    
+    1. Set up iDempiere development environment
+    2. Create plugin project structure
+    3. Configure build tools (Maven/Gradle)
+    4. Set up version control (Git)
+    
+    **Development Workflow**
+    
+    1. Implement functionality incrementally
+    2. Test each component thoroughly
+    3. Use the test sites for validation
+    4. Get community feedback early
+    5. Iterate based on feedback
+    
+    **Testing**
+    
+    - Unit test your business logic
+    - Integration test with iDempiere core
+    - Test in multiple environments
+    - Verify database migration scripts
+    - Performance test with realistic data
+  </Tab>
+  
+  <Tab title="Sharing">
+    **Before Sharing**
+    
+    - Ensure plugin follows guidelines
+    - Complete all documentation
+    - Test on clean iDempiere installation
+    - Prepare installation package
+    - Choose appropriate license
+    
+    **Publishing Your Plugin**
+    
+    1. Add to [Available Plugins](https://wiki.idempiere.org/en/Category:Available_Plugins)
+    2. Include complete description
+    3. Provide download links
+    4. Share source code repository
+    5. Offer support channel
+    
+    **Maintenance**
+    
+    - Monitor for compatibility with new iDempiere versions
+    - Respond to user issues and questions
+    - Accept community contributions
+    - Keep documentation updated
+    - Release updates as needed
+  </Tab>
+</Tabs>
+
+## Plugin Ecosystem Guidelines
+
+### Community Standards
+
+The iDempiere community expects plugins to:
+
+<Check>Follow the official [Plugin Guidelines](https://wiki.idempiere.org/en/Plugin_Guidelines)</Check>
+<Check>Provide value to the broader community, not just a single company</Check>
+<Check>Include complete documentation and installation instructions</Check>
+<Check>Be maintained and supported by the author</Check>
+<Check>Work with standard iDempiere installations</Check>
+<Check>Not require extensive custom support to use</Check>
+
+<Note>
+  Project leaders may remove plugins from the Available Plugins list if they:
+  - Don't follow community guidelines
+  - Are disruptive or problematic
+  - Require specific implementing company support
+  - Are abandoned without maintenance
+</Note>
+
+### Contributing Plugin Documentation
+
+When adding your plugin to the wiki:
+
+1. **Create a plugin page** with comprehensive information
+2. **Add to the category** [Available Plugins](https://wiki.idempiere.org/en/Category:Available_Plugins)
+3. **Include all required sections**:
+   - Description and purpose
+   - Features and capabilities
+   - Installation instructions
+   - Configuration guide
+   - Version compatibility
+   - License information
+   - Support contact
+   - Download links
+4. **Keep it updated** as you release new versions
+
+## Getting Help with Plugin Development
+
+<CardGroup cols={2}>
+  <Card title="Development Forum" icon="comments" href="https://groups.google.com/group/idempiere">
+    Ask questions and share experiences in the community forum
+  </Card>
+  <Card title="Mattermost Developer Chat" icon="message" href="https://mattermost.idempiere.org">
+    Connect with developers in real-time chat
+  </Card>
+  <Card title="Contributing Guide" icon="code-branch" href="https://github.com/idempiere/idempiere/blob/master/CONTRIBUTING.md">
+    Learn about contributing code to iDempiere
+  </Card>
+  <Card title="Wiki Documentation" icon="book" href="https://wiki.idempiere.org">
+    Access technical documentation and guides
+  </Card>
+</CardGroup>
+
+## Plugin Development Resources
+
+### Learning Resources
+
+- **Wiki Pages** - Technical guides and tutorials on the [iDempiere Wiki](https://wiki.idempiere.org)
+- **Existing Plugins** - Study source code of [available plugins](https://wiki.idempiere.org/en/Category:Available_Plugins)
+- **Community Forums** - Ask questions and learn from experienced developers
+- **Core Code** - Review iDempiere core for patterns and best practices
+
+### Technical Resources
+
+- **Source Code** - [GitHub repository](https://github.com/idempiere/idempiere)
+- **Build System** - Jenkins CI at [jenkins.idempiere.org](https://jenkins.idempiere.org)
+- **Test Environments** - [Test sites](https://www.idempiere.org/test-sites) for validation
+- **Issue Tracking** - [JIRA](https://idempiere.atlassian.net) for bugs and features
+
+## Evaluation: Core vs Plugin
+
+When deciding whether functionality should be in core or a plugin:
+
+<Tabs>
+  <Tab title="Core Criteria">
+    Functionality belongs in **iDempiere core** when it:
+    
+    - Benefits most iDempiere users
+    - Provides fundamental business functionality
+    - Requires deep integration with core systems
+    - Needs to be maintained as part of core
+    - Is industry-agnostic and broadly applicable
+  </Tab>
+  
+  <Tab title="Plugin Criteria">
+    Functionality is better as a **plugin** when it:
+    
+    - Serves specific industries or niches
+    - Integrates with external third-party services
+    - Provides optional/specialized features
+    - May have different release cycles than core
+    - Is company or region-specific
+    - Benefits from independent maintenance
+  </Tab>
+</Tabs>
+
+<Tip>
+  When in doubt, discuss your idea in the [forums](https://groups.google.com/group/idempiere) or [Mattermost](https://mattermost.idempiere.org). The community can provide guidance on whether core contribution or plugin development is more appropriate.
+</Tip>
+
+## Join the Plugin Community
+
+iDempiere's plugin ecosystem thrives on community collaboration:
+
+- **Share your plugins** to help others solve similar problems
+- **Contribute to existing plugins** with improvements and fixes
+- **Provide feedback** on plugins you use
+- **Help with documentation** for plugin developers
+- **Test plugins** and report issues
+
+Together, we make iDempiere more powerful and flexible for everyone.

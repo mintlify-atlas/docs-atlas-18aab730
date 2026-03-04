@@ -1,0 +1,238 @@
+---
+title: Web Services Overview
+description: Introduction to iDempiere's comprehensive web service APIs for integration and automation
+icon: globe
+---
+
+iDempiere provides powerful web service capabilities that enable seamless integration with external systems and applications. The platform offers both SOAP and REST APIs, allowing developers to choose the most appropriate protocol for their use case.
+
+## Service Architecture
+
+iDempiere's web service layer is built on Apache CXF and supports multiple protocols:
+
+- **SOAP Services**: Full-featured XML-based web services with WSDL definitions
+- **REST Services**: JSON and XML support for modern, lightweight integrations
+- **Dual Protocol**: Services are exposed via both SOAP and REST endpoints simultaneously
+
+## Available Services
+
+### ModelADService
+
+The primary service for CRUD operations and business logic execution.
+
+<CardGroup cols={2}>
+  <Card title="Create Data" icon="plus">
+    Create new records in any iDempiere table
+  </Card>
+  <Card title="Read Data" icon="book-open">
+    Read single records or query multiple records
+  </Card>
+  <Card title="Update Data" icon="pen">
+    Update existing records with new values
+  </Card>
+  <Card title="Delete Data" icon="trash">
+    Delete records from the system
+  </Card>
+  <Card title="Run Process" icon="play">
+    Execute business processes and reports
+  </Card>
+  <Card title="Set Doc Action" icon="file-check">
+    Process documents (complete, void, close, etc.)
+  </Card>
+  <Card title="Get List" icon="list">
+    Retrieve lookup lists and reference data
+  </Card>
+  <Card title="Query Data" icon="magnifying-glass">
+    Advanced querying with filters and pagination
+  </Card>
+</CardGroup>
+
+### CompositeService
+
+Execute multiple operations in a single request with transaction control.
+
+<Card title="Composite Operation" icon="layer-group">
+  Execute multiple CRUD and process operations atomically with pre-commit and post-commit hooks
+</Card>
+
+## Service Endpoints
+
+<CodeGroup>
+```text SOAP Endpoints
+https://your-server:8443/ADInterface/services/ModelADService
+https://your-server:8443/ADInterface/services/compositeInterface
+```
+
+```text REST Endpoints  
+https://your-server:8443/ADInterface/services/rest/model_adservice/*
+https://your-server:8443/ADInterface/services/rest/composite_service/*
+```
+
+```text WSDL Definitions
+https://your-server:8443/ADInterface/services/ModelADService?wsdl
+https://your-server:8443/ADInterface/services/compositeInterface?wsdl
+```
+</CodeGroup>
+
+## Key Features
+
+### Security and Authentication
+
+- Role-based access control for all operations
+- Session caching for performance
+- Configurable session expiry
+- IP-based validation support
+- Custom validators for login and operations
+
+### Transaction Management
+
+- Automatic transaction handling
+- Rollback on errors
+- Composite operations with transaction boundaries
+- Pre-commit and post-commit hooks
+
+### Data Handling
+
+- Full support for all iDempiere data types
+- Automatic type conversion
+- Lookup value resolution
+- Binary data support (Base64 encoded)
+- Date/time handling with timezone support
+
+### Extensibility
+
+- Custom web service types
+- Pluggable validators (IWSValidator interface)
+- Configurable input/output fields
+- Service-level parameter definitions
+
+## Configuration
+
+Web services are configured through the iDempiere application:
+
+1. **Web Service** (WS_WebService): Define service endpoints
+2. **Web Service Method** (WS_WebServiceMethod): Define available methods
+3. **Web Service Type** (WS_WebServiceType): Configure specific operations
+4. **Web Service Type Access** (WS_WebServiceTypeAccess): Control role-based access
+5. **Web Service Parameters** (WS_WebService_Para): Define input parameters
+6. **Field Input/Output**: Configure field-level access
+
+## Schema Reference
+
+The complete XML schema is defined in:
+
+<Card title="iDempiere Schema" icon="file-code" href="#">
+  `/WEB-INF/xsd/idempiere-schema.xsd`
+  
+  Defines all request/response structures including:
+  - WindowTabData
+  - DataRow and DataField
+  - StandardResponse
+  - ModelCRUD operations
+  - Process execution
+  - Login request/response
+</Card>
+
+## Common Data Types
+
+### ADLoginRequest
+
+Required for all service requests to authenticate and establish context.
+
+<ParamField path="user" type="string" required>
+  Username or email (based on system configuration)
+</ParamField>
+
+<ParamField path="pass" type="string" required>
+  User password
+</ParamField>
+
+<ParamField path="lang" type="string" required>
+  Language code (e.g., en_US, es_MX)
+</ParamField>
+
+<ParamField path="ClientID" type="integer" required>
+  Tenant/Client ID
+</ParamField>
+
+<ParamField path="RoleID" type="integer" required>
+  User role ID
+</ParamField>
+
+<ParamField path="OrgID" type="integer" required>
+  Organization ID
+</ParamField>
+
+<ParamField path="WarehouseID" type="integer" required>
+  Warehouse ID (can be 0)
+</ParamField>
+
+<ParamField path="stage" type="integer" required>
+  Session expiry in minutes (9 = default)
+</ParamField>
+
+### StandardResponse
+
+Standard response structure for most operations.
+
+<ResponseField name="IsError" type="boolean">
+  Indicates if the operation failed
+</ResponseField>
+
+<ResponseField name="IsRolledBack" type="boolean">
+  Indicates if the transaction was rolled back
+</ResponseField>
+
+<ResponseField name="RecordID" type="integer">
+  ID of the created/updated record
+</ResponseField>
+
+<ResponseField name="Error" type="string">
+  Error message if IsError is true
+</ResponseField>
+
+<ResponseField name="outputFields" type="array">
+  Configured output fields with values and display text
+</ResponseField>
+
+<ResponseField name="WindowTabData" type="object">
+  Data returned for read/query operations
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api/authentication">
+    Learn how to authenticate and manage sessions
+  </Card>
+  <Card title="REST API" icon="code" href="/api/rest-api">
+    Explore REST API endpoints and examples
+  </Card>
+  <Card title="SOAP API" icon="file-code" href="/api/soap-api">
+    Detailed SOAP API documentation and WSDL reference
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Service Types for Configuration">
+    Define web service types in the application rather than hardcoding table names and operations. This provides better security and maintainability.
+  </Accordion>
+  
+  <Accordion title="Implement Custom Validators">
+    Use the IWSValidator extension point to add custom validation logic, logging, or integration with external systems.
+  </Accordion>
+  
+  <Accordion title="Optimize with Session Caching">
+    Set an appropriate session expiry time to balance security and performance. Sessions are cached based on login credentials.
+  </Accordion>
+  
+  <Accordion title="Handle Errors Gracefully">
+    Always check the IsError flag in responses and handle rollback scenarios appropriately in your client application.
+  </Accordion>
+  
+  <Accordion title="Use Composite Service for Related Operations">
+    When performing multiple related operations, use the CompositeService to ensure atomicity and reduce network overhead.
+  </Accordion>
+</AccordionGroup>

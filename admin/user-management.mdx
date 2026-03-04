@@ -1,0 +1,454 @@
+---
+title: User Management
+description: Manage users, roles, and permissions in iDempiere
+---
+
+## Overview
+
+iDempiere implements a comprehensive role-based access control (RBAC) system. Users are assigned roles, and roles define access to data, windows, processes, and workflows.
+
+## User Model
+
+Users in iDempiere are represented by the `AD_User` table and `MUser` model class.
+
+### User Properties
+
+- **AD_User_ID**: Unique user identifier
+- **Name**: User's full name
+- **Email**: Email address (used for login and notifications)
+- **Password**: Encrypted password (using SHA-512 with salt)
+- **C_BPartner_ID**: Associated business partner
+- **IsActive**: Whether user account is active
+- **IsLocked**: Whether user is locked out
+
+## Creating Users
+
+### Via iDempiere UI
+
+<Steps>
+  <Step title="Navigate to User window">
+    Go to **System Admin → General Rules → Security → User**
+  </Step>
+  
+  <Step title="Create new user">
+    Click **New Record** and fill in:
+    - Name
+    - Email (used as login)
+    - Password
+    - Business Partner (if applicable)
+  </Step>
+  
+  <Step title="Assign roles">
+    Go to **User Roles** tab and assign one or more roles to the user
+  </Step>
+  
+  <Step title="Set default client and organization">
+    Configure default login preferences
+  </Step>
+</Steps>
+
+### Programmatically
+
+Users can be created using the `MUser` class:
+
+```java
+// Create new user
+MUser user = new MUser(ctx, 0, trxName);
+user.setName("John Doe");
+user.setEMail("john.doe@example.com");
+user.setC_BPartner_ID(bPartnerId);
+
+// Set password (automatically encrypted)
+user.setPassword("SecurePassword123");
+
+// Save user
+if (!user.save()) {
+    log.severe("Failed to create user");
+}
+```
+
+## User Authentication
+
+### Password Security
+
+iDempiere uses secure password hashing:
+
+- **Algorithm**: SHA-512 with salt
+- **Salt**: Randomly generated per user
+- **Migration**: Automatic migration from older hash formats
+
+<Warning>
+Passwords are never stored in plain text. Lost passwords must be reset, not recovered.
+</Warning>
+
+### Password Reset
+
+<Steps>
+  <Step title="Navigate to user record">
+    Open the User window and find the user
+  </Step>
+  
+  <Step title="Set new password">
+    Enter new password in the Password field
+  </Step>
+  
+  <Step title="Save changes">
+    Click Save to encrypt and store the new password
+  </Step>
+  
+  <Step title="Notify user">
+    Inform user of their new password securely (not via email)
+  </Step>
+</Steps>
+
+## Role Management
+
+Roles define what users can access and what operations they can perform.
+
+### Role Model
+
+Roles are implemented in the `MRole` class, which is final to prevent security rule bypasses.
+
+```java
+/**
+ * Role Model.
+ * Includes AD_User runtime info for Personal Access.
+ * The class is final, so that you cannot overwrite the security rules.
+ */
+public final class MRole extends X_AD_Role
+```
+
+### Role Properties
+
+- **AD_Role_ID**: Unique role identifier
+- **Name**: Role name
+- **UserLevel**: System, Client, Organization, or Client+Organization
+- **IsAccessAllOrgs**: Access to all organizations
+- **IsCanReport**: Can run reports
+- **IsCanExport**: Can export data
+- **IsPersonalLock**: Personal data lock
+- **IsPersonalAccess**: Personal access rules override
+
+## Creating Roles
+
+<Steps>
+  <Step title="Navigate to Role window">
+    Go to **System Admin → General Rules → Security → Role**
+  </Step>
+  
+  <Step title="Create new role">
+    Click **New Record** and configure:
+    - Name
+    - User Level
+    - Access permissions
+  </Step>
+  
+  <Step title="Configure access">
+    Set access to:
+    - Windows (Window Access tab)
+    - Processes (Process Access tab)
+    - Forms (Form Access tab)
+    - Workflows (Workflow Access tab)
+    - Tables (Table Access tab)
+  </Step>
+  
+  <Step title="Set data access">
+    Configure organization and client access
+  </Step>
+</Steps>
+
+### System Roles
+
+iDempiere includes predefined system roles:
+
+- **System Administrator** (AD_Role_ID=0): Full system access
+- **System**: Core system role
+- **GardenWorld Admin**: Demo client administrator
+
+<Warning>
+Never modify the System Administrator role. Create custom roles for administrative users instead.
+</Warning>
+
+## Role-Based Access Control
+
+### Window Access
+
+Control which windows users can access:
+
+```java
+// Check if role has access to window
+MRole role = MRole.getDefault();
+boolean hasAccess = role.isWindowAccess(AD_Window_ID);
+```
+
+### Table Access
+
+Define read/write access to specific tables:
+
+```java
+// Check table access
+boolean canRead = role.isTableAccess(AD_Table_ID, false);
+boolean canWrite = role.isTableAccess(AD_Table_ID, true);
+```
+
+### Data Access
+
+Roles control access to data based on:
+
+- **Client**: Multi-tenant separation
+- **Organization**: Organizational hierarchy
+- **Record-level**: Specific record access
+
+```java
+// Add role-based SQL filter
+String sql = role.addAccessSQL(
+    "SELECT * FROM C_Invoice",
+    "C_Invoice",
+    MRole.SQL_FULLYQUALIFIED,
+    MRole.SQL_RO
+);
+```
+
+## User-Role Assignment
+
+### Assigning Roles to Users
+
+<Steps>
+  <Step title="Open user record">
+    Navigate to the User window
+  </Step>
+  
+  <Step title="Go to User Roles tab">
+    Click on the User Roles tab
+  </Step>
+  
+  <Step title="Add role">
+    Create new record and select role
+  </Step>
+  
+  <Step title="Set defaults">
+    Configure default organization and warehouse for this role
+  </Step>
+</Steps>
+
+### Multiple Roles
+
+Users can have multiple roles:
+
+- Select role at login
+- Switch roles during session
+- Different default settings per role
+
+```java
+// Get users with specific role
+MUser[] users = MUser.getWithRole(role);
+
+for (MUser user : users) {
+    log.info("User: " + user.getName());
+}
+```
+
+## Access Restrictions
+
+### Document Access
+
+Control access to documents based on document type and status:
+
+- **Doc Action Access**: Which document actions users can perform
+- **Document Type Access**: Which document types are available
+
+### Organization Access
+
+Restrict data access by organization:
+
+- **Single Organization**: Access to one organization only
+- **Organization Tree**: Access to organization and children
+- **All Organizations**: Access to all organizations in client
+
+### Time-Based Restrictions
+
+Implement time-based access controls:
+
+- Login time restrictions
+- Session timeout settings
+- Password expiration
+
+## User Preferences
+
+Users can customize their experience:
+
+### System Preferences
+
+- **Language**: Display language
+- **Date Format**: Date and time formatting
+- **Theme**: UI theme selection
+- **Auto-commit**: Automatic commit mode
+- **Show Accounting**: Show accounting tab
+
+### Stored in AD_UserPreference
+
+Preferences are stored per user:
+
+```java
+// Get user preference
+String value = Env.getPreference(
+    ctx,
+    AD_Window_ID,
+    "PreferenceName",
+    false
+);
+```
+
+## Security Best Practices
+
+<Check>
+  Implement principle of least privilege - grant minimum necessary access
+</Check>
+
+<Check>
+  Use role-based access instead of user-specific permissions
+</Check>
+
+<Check>
+  Regularly review user accounts and disable inactive users
+</Check>
+
+<Check>
+  Enforce strong password policies
+</Check>
+
+<Check>
+  Audit user login and access patterns
+</Check>
+
+<Check>
+  Separate duties for financial and operational roles
+</Check>
+
+## User Deactivation
+
+<Steps>
+  <Step title="Open user record">
+    Navigate to the user to deactivate
+  </Step>
+  
+  <Step title="Uncheck Active">
+    Uncheck the **Active** checkbox
+  </Step>
+  
+  <Step title="Save changes">
+    Save the record
+  </Step>
+  
+  <Step title="Verify role assignments">
+    Review and remove sensitive role assignments if needed
+  </Step>
+</Steps>
+
+<Warning>
+Deactivating a user prevents login but preserves audit trail and historical data references.
+</Warning>
+
+## Business Partner Users
+
+Users can be linked to business partners for:
+
+- **Customer Portal**: Customer self-service
+- **Vendor Portal**: Supplier access
+- **Employee Access**: Employee-specific functions
+
+### Creating BP Users
+
+```java
+// Get users for business partner
+MUser[] bpUsers = MUser.getOfBPartner(ctx, C_BPartner_ID, trxName);
+
+for (MUser user : bpUsers) {
+    log.info("BP User: " + user.getEMail());
+}
+```
+
+## Session Management
+
+### Active Sessions
+
+Monitor active user sessions:
+
+- View logged-in users
+- See current session details
+- Force logout if needed
+
+### Session Timeout
+
+Configure session timeout in system configuration:
+
+- Idle timeout
+- Absolute timeout
+- Warning before timeout
+
+## User Audit Trail
+
+iDempiere tracks all user actions:
+
+- **Login/Logout**: Authentication events
+- **Data Changes**: Created, Updated, Deleted records
+- **Document Processing**: Document status changes
+- **Access Attempts**: Failed access attempts
+
+## Advanced Topics
+
+### Personal Access
+
+Users can have personal access records that override role access:
+
+```java
+if (role.isPersonalAccess()) {
+    // Apply personal access rules
+}
+```
+
+### Role Inheritance
+
+Roles can be structured hierarchically (via customization):
+
+- Base role defines common permissions
+- Derived roles add specific permissions
+
+### Dynamic Role Assignment
+
+Implement dynamic role assignment based on:
+
+- Time of day
+- User location
+- Data context
+- Business rules
+
+## Troubleshooting
+
+### User Cannot Login
+
+1. Verify user is active
+2. Check if user is locked
+3. Confirm password is correct
+4. Verify user has at least one active role
+5. Check role has organization access
+
+### Access Denied Errors
+
+1. Verify role has window/process access
+2. Check organization access
+3. Review table access permissions
+4. Check record-level security rules
+
+### Performance Issues
+
+1. Review number of access records
+2. Optimize role SQL filters
+3. Check role cache settings
+4. Analyze access SQL generation
+
+## See Also
+
+- [System Configuration](/admin/configuration) - Configure system settings
+- [Database Setup](/admin/database-setup) - Database user configuration
+- [Migration](/admin/migration) - User and role migration

@@ -1,0 +1,615 @@
+---
+title: 'Data Model & Persistent Objects'
+description: 'Understanding iDempiere data model, PO class hierarchy, and database-driven design'
+icon: 'database'
+---
+
+## Overview
+
+iDempiere uses a sophisticated persistent object (PO) framework that provides object-relational mapping between Java classes and database tables. Every table in the Application Dictionary is represented by a generated Java class.
+
+## Persistent Object (PO) Base Class
+
+All model classes extend from the abstract `PO` class, which provides core CRUD operations, transaction management, and validation.
+
+### PO Class Structure
+
+From `org.compiere.model.PO`:
+
+```java title="PO Abstract Base Class"
+package org.compiere.model;
+
+import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.math.BigDecimal;
+import java.util.Properties;
+
+/**
+ * Abstract base class for Persistent Object.
+ * Provides CRUD operations, validation, and event handling.
+ */
+public abstract class PO 
+    implements Serializable, Comparator<Object>, Evaluatee, Cloneable {
+    
+    /** Context properties */
+    protected Properties p_ctx;
+    
+    /** Transaction name */
+    protected String p_trxName;
+    
+    /** New record flag */
+    private boolean m_newRecord = false;
+    
+    /** Array of new values */
+    protected Object[] m_newValues;
+    
+    /** Array of old values for change detection */
+    protected Object[] m_oldValues;
+    
+    /** Query timeout in seconds */
+    private Integer m_queryTimeout = null;
+    
+    /**
+     * Set value - performs validation and change tracking
+     * @param columnName column name
+     * @param value new value
+     * @return true if value was set
+     */
+    protected boolean set_Value(String columnName, Object value);
+    
+    /**
+     * Get value from internal storage
+     * @param columnName column name
+     * @return value or null
+     */
+    protected Object get_Value(String columnName);
+    
+    /**
+     * Save record to database
+     * @return true if saved successfully
+     */
+    public boolean save();
+    
+    /**
+     * Delete record from database
+     * @return true if deleted successfully
+     */
+    public boolean delete(boolean force);
+    
+    /**
+     * Load record from database
+     * @param ID record ID
+     * @return true if loaded successfully
+     */
+    protected boolean load(int ID);
+}
+```
+
+<Info>
+The PO class uses parallel arrays (`m_newValues` and `m_oldValues`) for efficient change detection, enabling dirty field tracking and optimized SQL updates.
+</Info>
+
+## Model Class Hierarchy
+
+iDempiere generates a two-tier class hierarchy for each table:
+
+### Generated Base Class (X_TableName)
+
+Auto-generated from Application Dictionary, contains getters/setters:
+
+```java
+/**
+ * Generated Model for C_Order
+ * DO NOT MODIFY - Regenerated when table definition changes
+ */
+public class X_C_Order extends PO {
+    
+    /** Column name C_Order_ID */
+    public static final String COLUMNNAME_C_Order_ID = "C_Order_ID";
+    
+    /** Column name DocumentNo */
+    public static final String COLUMNNAME_DocumentNo = "DocumentNo";
+    
+    /** Column name GrandTotal */
+    public static final String COLUMNNAME_GrandTotal = "GrandTotal";
+    
+    /**
+     * Get Order ID
+     * @return C_Order_ID
+     */
+    public int getC_Order_ID() {
+        Integer ii = (Integer)get_Value(COLUMNNAME_C_Order_ID);
+        if (ii == null) return 0;
+        return ii.intValue();
+    }
+    
+    /**
+     * Set Document No
+     * @param DocumentNo Document sequence number
+     */
+    public void setDocumentNo(String DocumentNo) {
+        set_Value(COLUMNNAME_DocumentNo, DocumentNo);
+    }
+    
+    /**
+     * Get Document No
+     * @return Document sequence number
+     */
+    public String getDocumentNo() {
+        return (String)get_Value(COLUMNNAME_DocumentNo);
+    }
+    
+    /**
+     * Set Grand Total
+     * @param GrandTotal Total amount of document
+     */
+    public void setGrandTotal(BigDecimal GrandTotal) {
+        set_Value(COLUMNNAME_GrandTotal, GrandTotal);
+    }
+    
+    /**
+     * Get Grand Total
+     * @return Total amount of document
+     */
+    public BigDecimal getGrandTotal() {
+        BigDecimal bd = (BigDecimal)get_Value(COLUMNNAME_GrandTotal);
+        if (bd == null) return Env.ZERO;
+        return bd;
+    }
+}
+```
+
+<Warning>
+Never modify X_* classes directly. They are regenerated when the Application Dictionary changes, and all custom modifications will be lost.
+</Warning>
+
+### Model Class (MTableName)
+
+Developer-maintained class for business logic:
+
+```java title="org.compiere.model/MOrder.java"
+package org.compiere.model;
+
+import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.util.Properties;
+
+/**
+ * Order Model
+ * Contains business logic and custom methods
+ */
+public class MOrder extends X_C_Order implements DocAction {
+    
+    private static final long serialVersionUID = 1L;
+    
+    /**
+     * Standard constructor
+     * @param ctx context
+     * @param C_Order_ID id
+     * @param trxName transaction
+     */
+    public MOrder(Properties ctx, int C_Order_ID, String trxName) {
+        super(ctx, C_Order_ID, trxName);
+        if (C_Order_ID == 0) {
+            // Set defaults for new record
+            setDocStatus(DOCSTATUS_Drafted);
+            setDocAction(DOCACTION_Complete);
+            setIsApproved(false);
+            setIsTaxIncluded(false);
+            setProcessed(false);
+        }
+    }
+    
+    /**
+     * Load constructor
+     * @param ctx context
+     * @param rs result set
+     * @param trxName transaction
+     */
+    public MOrder(Properties ctx, ResultSet rs, String trxName) {
+        super(ctx, rs, trxName);
+    }
+    
+    /**
+     * Get order lines
+     * @return array of order lines
+     */
+    public MOrderLine[] getLines() {
+        return getLines(null, null);
+    }
+    
+    /**
+     * Get order lines with filters
+     * @param whereClause optional WHERE clause
+     * @param orderBy optional ORDER BY clause
+     * @return array of order lines
+     */
+    public MOrderLine[] getLines(String whereClause, String orderBy) {
+        StringBuilder where = new StringBuilder("C_Order_ID=?");
+        if (!Util.isEmpty(whereClause))
+            where.append(" AND ").append(whereClause);
+        
+        List<MOrderLine> list = new Query(getCtx(), MOrderLine.Table_Name, 
+            where.toString(), get_TrxName())
+            .setParameters(getC_Order_ID())
+            .setOrderBy(orderBy)
+            .list();
+        
+        return list.toArray(new MOrderLine[list.size()]);
+    }
+    
+    /**
+     * Calculate total amount from lines
+     * @return true if successful
+     */
+    public boolean calculateTaxTotal() {
+        BigDecimal totalLines = Env.ZERO;
+        BigDecimal taxTotal = Env.ZERO;
+        
+        for (MOrderLine line : getLines()) {
+            totalLines = totalLines.add(line.getLineNetAmt());
+        }
+        
+        // Calculate taxes
+        MOrderTax[] taxes = getTaxes(true);
+        for (MOrderTax tax : taxes) {
+            taxTotal = taxTotal.add(tax.getTaxAmt());
+        }
+        
+        setTotalLines(totalLines);
+        setTaxAmt(taxTotal);
+        setGrandTotal(totalLines.add(taxTotal));
+        
+        return true;
+    }
+    
+    @Override
+    protected boolean beforeSave(boolean newRecord) {
+        // Custom validation
+        if (getC_BPartner_ID() <= 0) {
+            log.saveError("FillMandatory", Msg.getElement(getCtx(), "C_BPartner_ID"));
+            return false;
+        }
+        
+        // Calculate totals before saving
+        if (is_ValueChanged("IsSOTrx") || is_ValueChanged("C_BPartner_ID")) {
+            calculateTaxTotal();
+        }
+        
+        return true;
+    }
+    
+    @Override
+    protected boolean afterSave(boolean newRecord, boolean success) {
+        if (!success)
+            return false;
+        
+        // Clear dependent caches
+        if (is_ValueChanged("C_BPartner_ID")) {
+            // Notify partner statistics need update
+        }
+        
+        return true;
+    }
+}
+```
+
+## MTable - Table Metadata
+
+The `MTable` class provides access to table metadata from the Application Dictionary.
+
+```java title="org.compiere.model/MTable.java"
+package org.compiere.model;
+
+import org.compiere.util.CCache;
+import org.idempiere.cache.ImmutableIntPOCache;
+
+/**
+ * Persistent Table Model
+ * Provides access to table metadata and column definitions
+ */
+public class MTable extends X_AD_Table implements ImmutablePOSupport {
+    
+    private static final long serialVersionUID = 1L;
+    
+    /** Cache by table ID */
+    private static ImmutableIntPOCache<Integer, MTable> s_cache = 
+        new ImmutableIntPOCache<>("AD_Table", 100);
+    
+    /**
+     * Get MTable from Cache (immutable)
+     * @param ctx context
+     * @param AD_Table_ID table ID
+     * @return MTable instance
+     */
+    public static MTable get(Properties ctx, int AD_Table_ID) {
+        Integer key = Integer.valueOf(AD_Table_ID);
+        MTable table = s_cache.get(ctx, key, e -> new MTable(ctx, e));
+        if (table != null)
+            return table;
+        
+        table = new MTable(ctx, AD_Table_ID, null);
+        s_cache.put(key, table, e -> new MTable(Env.getCtx(), e));
+        return table;
+    }
+    
+    /**
+     * Get table by name
+     * @param ctx context
+     * @param tableName table name
+     * @return MTable instance or null
+     */
+    public static MTable get(Properties ctx, String tableName) {
+        String whereClause = "TableName=?";
+        MTable table = new Query(ctx, Table_Name, whereClause, null)
+            .setParameters(tableName)
+            .first();
+        return table;
+    }
+    
+    /**
+     * Get PO Class for this table
+     * @return PO class or null
+     */
+    public Class<?> getPOClass() {
+        String className = "org.compiere.model.M" + getTableName().substring(2);
+        
+        // Try model factories first
+        List<IModelFactory> factories = Service.locator()
+            .list(IModelFactory.class)
+            .getServices();
+        
+        for (IModelFactory factory : factories) {
+            Class<?> clazz = factory.getClass(getTableName());
+            if (clazz != null)
+                return clazz;
+        }
+        
+        // Try direct class loading
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
+    }
+}
+```
+
+<Accordion title="Table Naming Conventions">
+iDempiere follows strict naming conventions:
+
+- **Tables**: Prefix indicates module (C_ = Core, M_ = Material Management, AD_ = Application Dictionary)
+- **Primary Keys**: TableName + "_ID" (e.g., C_Order_ID)
+- **Foreign Keys**: Referenced table name + "_ID" (e.g., C_BPartner_ID in C_Order)
+- **Classes**: M prefix + table name without prefix (e.g., MOrder for C_Order)
+</Accordion>
+
+## Standard Columns
+
+Every table includes standard audit and multi-tenancy columns:
+
+### Audit Trail Columns
+
+```java
+// Automatically populated on save
+public interface StandardColumns {
+    String COLUMNNAME_Created = "Created";      // Creation timestamp
+    String COLUMNNAME_CreatedBy = "CreatedBy";  // Creating user ID
+    String COLUMNNAME_Updated = "Updated";      // Last update timestamp
+    String COLUMNNAME_UpdatedBy = "UpdatedBy";  // Last updating user ID
+}
+```
+
+### Multi-Tenancy Columns
+
+```java
+// Present in every table for tenant isolation
+public interface TenantColumns {
+    String COLUMNNAME_AD_Client_ID = "AD_Client_ID";  // Client/Tenant ID
+    String COLUMNNAME_AD_Org_ID = "AD_Org_ID";        // Organization ID
+}
+```
+
+<Note>
+The PO base class automatically sets AD_Client_ID and AD_Org_ID from the context when creating new records, enforcing multi-tenancy at the object level.
+</Note>
+
+## Query API
+
+iDempiere provides a fluent Query API for database operations:
+
+```java
+import org.compiere.model.Query;
+
+// Simple query
+MOrder order = new Query(ctx, MOrder.Table_Name, "C_Order_ID=?", trxName)
+    .setParameters(orderId)
+    .first();
+
+// Complex query with multiple conditions
+List<MOrder> orders = new Query(ctx, MOrder.Table_Name, 
+    "IsSOTrx=? AND DocStatus=? AND DateOrdered>=?", trxName)
+    .setParameters(true, "CO", startDate)
+    .setOrderBy("DateOrdered DESC")
+    .setOnlyActiveRecords(true)
+    .list();
+
+// Aggregate query
+BigDecimal totalSales = new Query(ctx, MOrder.Table_Name,
+    "IsSOTrx=? AND DocStatus IN ('CO','CL')", trxName)
+    .setParameters(true)
+    .aggregate("GrandTotal", Query.AGGREGATE_SUM);
+
+// Count query
+int orderCount = new Query(ctx, MOrder.Table_Name, 
+    "C_BPartner_ID=?", trxName)
+    .setParameters(partnerId)
+    .count();
+
+// Pagination
+List<MOrder> page = new Query(ctx, MOrder.Table_Name,
+    "IsSOTrx=?", trxName)
+    .setParameters(true)
+    .setOrderBy("Created DESC")
+    .setPage(50, 1)  // Page size 50, page 1
+    .list();
+```
+
+<AccordionGroup>
+  <Accordion title="Query Builder Options">
+    - `setParameters()` - Bind values for ? placeholders
+    - `setOnlyActiveRecords()` - Filter by IsActive='Y'
+    - `setApplyAccessFilter()` - Apply role-based security
+    - `setOrderBy()` - Set ORDER BY clause
+    - `setClient_ID()` - Filter by specific client
+    - `setPage()` - Enable pagination
+  </Accordion>
+  
+  <Accordion title="Result Retrieval Methods">
+    - `first()` - Get first matching record
+    - `firstOnly()` - Get first, throw exception if multiple
+    - `list()` - Get all matching records as List
+    - `iterate()` - Get Iterator for large result sets
+    - `count()` - Count matching records
+    - `aggregate()` - Perform SUM, AVG, MAX, MIN operations
+  </Accordion>
+</AccordionGroup>
+
+## Model Validators
+
+Model validators intercept PO lifecycle events for custom business logic:
+
+```java title="Custom Model Validator"
+package com.example.validator;
+
+import org.compiere.model.ModelValidator;
+import org.compiere.model.PO;
+import org.compiere.model.MOrder;
+
+public class CustomModelValidator implements ModelValidator {
+    
+    private int m_AD_Client_ID = -1;
+    
+    @Override
+    public void initialize(ModelValidationEngine engine, MClient client) {
+        // Register for specific tables
+        engine.addModelChange(MOrder.Table_Name, this);
+        
+        // Register for document events
+        engine.addDocValidate(MOrder.Table_Name, this);
+        
+        m_AD_Client_ID = client.getAD_Client_ID();
+    }
+    
+    @Override
+    public String modelChange(PO po, int type) throws Exception {
+        if (po.get_TableName().equals(MOrder.Table_Name)) {
+            return validateOrder((MOrder)po, type);
+        }
+        return null;
+    }
+    
+    private String validateOrder(MOrder order, int type) {
+        // Before new
+        if (type == TYPE_BEFORE_NEW) {
+            if (order.getC_BPartner_ID() <= 0) {
+                return "Business Partner is mandatory";
+            }
+        }
+        
+        // After change
+        if (type == TYPE_AFTER_CHANGE) {
+            if (order.is_ValueChanged("C_BPartner_ID")) {
+                // Update dependent records
+                updatePartnerStatistics(order);
+            }
+        }
+        
+        return null;  // null means validation passed
+    }
+    
+    @Override
+    public String docValidate(PO po, int timing) {
+        if (timing == TIMING_BEFORE_COMPLETE) {
+            MOrder order = (MOrder)po;
+            
+            // Validate order has lines
+            if (order.getLines().length == 0) {
+                return "Order must have at least one line";
+            }
+            
+            // Check credit limit
+            BigDecimal creditAvailable = getCreditAvailable(order.getC_BPartner_ID());
+            if (order.getGrandTotal().compareTo(creditAvailable) > 0) {
+                return "Order exceeds customer credit limit";
+            }
+        }
+        
+        return null;
+    }
+}
+```
+
+<Info>
+Model validators are registered as OSGi services and automatically discovered by the ModelValidationEngine at runtime.
+</Info>
+
+## Change Detection
+
+The PO class provides methods to detect field changes:
+
+```java
+MOrder order = new MOrder(ctx, orderId, trxName);
+
+// Check if any field changed
+if (order.is_Changed()) {
+    log.info("Order has unsaved changes");
+}
+
+// Check specific field
+if (order.is_ValueChanged("C_BPartner_ID")) {
+    int oldPartnerId = order.get_ValueOldAsInt("C_BPartner_ID");
+    int newPartnerId = order.getC_BPartner_ID();
+    log.info("Partner changed from " + oldPartnerId + " to " + newPartnerId);
+}
+
+// Get old value
+BigDecimal oldTotal = (BigDecimal)order.get_ValueOld("GrandTotal");
+
+// Get changed column names
+String[] changedColumns = order.get_ColumnsChanged();
+for (String column : changedColumns) {
+    log.info("Changed: " + column);
+}
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Generated Constants" icon="code">
+    Always use COLUMNNAME_* constants instead of string literals for column names
+  </Card>
+  <Card title="Lazy Loading" icon="bolt">
+    Use getLines() methods to load child records only when needed
+  </Card>
+  <Card title="Transaction Safety" icon="shield">
+    Always pass transaction name through to related PO operations
+  </Card>
+  <Card title="Exception Handling" icon="triangle-exclamation">
+    Use saveEx() and deleteEx() for automatic exception throwing
+  </Card>
+</CardGroup>
+
+## Related Topics
+
+<CardGroup cols={3}>
+  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
+    OSGi framework and system design
+  </Card>
+  <Card title="Multi-Tenancy" icon="users" href="/concepts/multi-tenancy">
+    Client and organization isolation
+  </Card>
+  <Card title="OSGi Plugins" icon="puzzle-piece" href="/concepts/osgi-plugins">
+    Extending the data model
+  </Card>
+</CardGroup>

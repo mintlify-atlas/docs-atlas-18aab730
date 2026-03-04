@@ -1,0 +1,616 @@
+---
+title: Model Validators
+description: Implement event-driven business logic with model validators in iDempiere
+---
+
+Model Validators are event handlers that intercept and respond to document and data model events throughout the system. They're the primary mechanism for implementing business rules that must execute when data changes.
+
+## What Are Model Validators?
+
+A Model Validator is a Java class that:
+- Listens to document lifecycle events (before save, after save, before complete, etc.)
+- Validates business rules across the application
+- Executes custom logic when data changes
+- Can prevent operations by returning error messages
+
+**Common use cases:**
+- Enforce complex business rules
+- Validate data before document processing
+- Synchronize with external systems
+- Calculate derived values
+- Maintain audit trails
+- Trigger workflows
+
+## Model Validator Events
+
+### Document Events
+
+Document events fire during the document lifecycle:
+
+```java
+// Document timing events
+MODEL_VALIDATOR.TIMING_BEFORE_PREPARE    // Before document prepare
+MODEL_VALIDATOR.TIMING_AFTER_PREPARE     // After document prepare
+MODEL_VALIDATOR.TIMING_BEFORE_VOID       // Before document void
+MODEL_VALIDATOR.TIMING_AFTER_VOID        // After document void
+MODEL_VALIDATOR.TIMING_BEFORE_CLOSE      // Before document close
+MODEL_VALIDATOR.TIMING_AFTER_CLOSE       // After document close
+MODEL_VALIDATOR.TIMING_BEFORE_REACTIVATE // Before document reactivate
+MODEL_VALIDATOR.TIMING_AFTER_REACTIVATE  // After document reactivate
+MODEL_VALIDATOR.TIMING_BEFORE_REVERSECORRECT   // Before reverse correction
+MODEL_VALIDATOR.TIMING_AFTER_REVERSECORRECT    // After reverse correction
+MODEL_VALIDATOR.TIMING_BEFORE_REVERSEACCRUAL   // Before reverse accrual
+MODEL_VALIDATOR.TIMING_AFTER_REVERSEACCRUAL    // After reverse accrual
+MODEL_VALIDATOR.TIMING_BEFORE_COMPLETE   // Before document complete
+MODEL_VALIDATOR.TIMING_AFTER_COMPLETE    // After document complete
+MODEL_VALIDATOR.TIMING_BEFORE_POST       // Before accounting post
+MODEL_VALIDATOR.TIMING_AFTER_POST        // After accounting post
+```
+
+### Model Events
+
+Model events fire during CRUD operations:
+
+```java
+// Table-level events
+MODEL_VALIDATOR.TYPE_BEFORE_NEW      // Before creating new record
+MODEL_VALIDATOR.TYPE_BEFORE_CHANGE   // Before updating existing record
+MODEL_VALIDATOR.TYPE_BEFORE_DELETE   // Before deleting record
+MODEL_VALIDATOR.TYPE_AFTER_NEW       // After creating new record
+MODEL_VALIDATOR.TYPE_AFTER_CHANGE    // After updating existing record
+MODEL_VALIDATOR.TYPE_AFTER_DELETE    // After deleting record
+MODEL_VALIDATOR.TYPE_AFTER_NEW_REPLICATION  // After replication of new record
+MODEL_VALIDATOR.TYPE_AFTER_CHANGE_REPLICATION // After replication of change
+```
+
+## Creating a Model Validator
+
+### Basic Structure
+
+Implement the `ModelValidator` interface:
+
+```java
+package com.yourcompany.validator;
+
+import org.compiere.model.ModelValidator;
+import org.compiere.model.PO;
+import org.compiere.util.CLogger;
+
+public class CustomValidator implements ModelValidator {
+    
+    private static CLogger log = CLogger.getCLogger(CustomValidator.class);
+    private int m_AD_Client_ID = -1;
+    
+    /**
+     * Initialize validator
+     */
+    @Override
+    public void initialize(ModelValidationEngine engine, MClient client) {
+        if (client != null) {
+            m_AD_Client_ID = client.getAD_Client_ID();
+            log.info(client.toString());
+        }
+        
+        // Register for table events
+        engine.addModelChange("C_Order", this);
+        engine.addModelChange("C_Invoice", this);
+        
+        // Register for document events  
+        engine.addDocValidate("C_Order", this);
+        engine.addDocValidate("C_Invoice", this);
+    }
+    
+    /**
+     * Get client ID
+     */
+    @Override
+    public int getAD_Client_ID() {
+        return m_AD_Client_ID;
+    }
+    
+    /**
+     * User login event
+     */
+    @Override
+    public String login(int AD_Org_ID, int AD_Role_ID, int AD_User_ID) {
+        log.info("User " + AD_User_ID + " logged in");
+        return null;  // null = no error
+    }
+    
+    /**
+     * Handle model change events
+     */
+    @Override
+    public String modelChange(PO po, int type) throws Exception {
+        log.info(po.get_TableName() + " Type: " + type);
+        
+        if (po.get_TableName().equals("C_Order")) {
+            return orderModelChange(po, type);
+        }
+        else if (po.get_TableName().equals("C_Invoice")) {
+            return invoiceModelChange(po, type);
+        }
+        
+        return null;  // null = no error
+    }
+    
+    /**
+     * Handle document validation events
+     */
+    @Override
+    public String docValidate(PO po, int timing) {
+        log.info(po.get_TableName() + " Timing: " + timing);
+        
+        if (po.get_TableName().equals("C_Order")) {
+            return orderDocValidate(po, timing);
+        }
+        else if (po.get_TableName().equals("C_Invoice")) {
+            return invoiceDocValidate(po, timing);
+        }
+        
+        return null;  // null = no error
+    }
+    
+    private String orderModelChange(PO po, int type) {
+        // Your order model change logic
+        return null;
+    }
+    
+    private String orderDocValidate(PO po, int timing) {
+        // Your order document validation logic
+        return null;
+    }
+    
+    private String invoiceModelChange(PO po, int type) {
+        // Your invoice model change logic
+        return null;
+    }
+    
+    private String invoiceDocValidate(PO po, int timing) {
+        // Your invoice document validation logic
+        return null;
+    }
+}
+```
+
+## Real Example: Facts Validator
+
+From `org.compiere.model.FactsValidator` in the iDempiere source:
+
+```java org.compiere.model.FactsValidator
+package org.compiere.model;
+
+import java.util.List;
+import org.compiere.acct.Fact;
+
+/**
+ * Interface for posting validator
+ * Validates accounting facts before posting
+ */
+public interface FactsValidator {
+    
+    /**
+     * Get AD_Client_ID
+     * @return client ID
+     */
+    public int getAD_Client_ID();
+    
+    /**
+     * Validate accounting facts
+     * @param schema Accounting schema
+     * @param facts List of facts to validate
+     * @param po Persistent object being posted
+     * @return error message or null - 
+     *         if not null, the document will be marked as Invalid
+     */
+    public String factsValidate(MAcctSchema schema, List<Fact> facts, PO po);
+}
+```
+
+This specialized validator checks accounting entries before they're posted.
+
+## Practical Examples
+
+### Example 1: Order Validation
+
+Validate orders before completion:
+
+```java
+private String orderDocValidate(PO po, int timing) {
+    if (timing == ModelValidator.TIMING_BEFORE_COMPLETE) {
+        MOrder order = (MOrder) po;
+        
+        // Check if order has lines
+        MOrderLine[] lines = order.getLines();
+        if (lines == null || lines.length == 0) {
+            return "Order must have at least one line";
+        }
+        
+        // Validate credit limit
+        MBPartner bp = new MBPartner(po.getCtx(), order.getC_BPartner_ID(), null);
+        BigDecimal creditLimit = bp.getSO_CreditLimit();
+        BigDecimal creditUsed = bp.getSO_CreditUsed();
+        BigDecimal orderTotal = order.getGrandTotal();
+        
+        BigDecimal creditAvailable = creditLimit.subtract(creditUsed);
+        
+        if (orderTotal.compareTo(creditAvailable) > 0) {
+            return "Order total (" + orderTotal + 
+                   ") exceeds available credit (" + creditAvailable + ")";
+        }
+        
+        // Validation passed
+        log.info("Order " + order.getDocumentNo() + " validated successfully");
+    }
+    
+    return null;
+}
+```
+
+### Example 2: Auto-Calculate on Save
+
+Calculate totals when invoice is saved:
+
+```java
+private String invoiceModelChange(PO po, int type) {
+    MInvoice invoice = (MInvoice) po;
+    
+    if (type == ModelValidator.TYPE_BEFORE_CHANGE || 
+        type == ModelValidator.TYPE_BEFORE_NEW) {
+        
+        // Recalculate tax if tax-related fields changed
+        if (po.is_ValueChanged("C_Tax_ID") || 
+            po.is_ValueChanged("TaxAmt")) {
+            
+            BigDecimal lineTotal = BigDecimal.ZERO;
+            MInvoiceLine[] lines = invoice.getLines();
+            
+            for (MInvoiceLine line : lines) {
+                lineTotal = lineTotal.add(line.getLineNetAmt());
+            }
+            
+            // Calculate tax
+            int C_Tax_ID = invoice.getC_Tax_ID();
+            if (C_Tax_ID > 0) {
+                MTax tax = new MTax(po.getCtx(), C_Tax_ID, null);
+                BigDecimal taxAmt = tax.calculateTax(lineTotal, false, 2);
+                invoice.setTaxAmt(taxAmt);
+            }
+        }
+    }
+    
+    return null;
+}
+```
+
+### Example 3: External System Integration
+
+Sync with external system after order completion:
+
+```java
+private String orderDocValidate(PO po, int timing) {
+    if (timing == ModelValidator.TIMING_AFTER_COMPLETE) {
+        MOrder order = (MOrder) po;
+        
+        try {
+            // Send to external system
+            ExternalAPIClient client = new ExternalAPIClient();
+            boolean success = client.sendOrder(order);
+            
+            if (success) {
+                // Mark as synced
+                order.set_ValueOfColumn("IsSynced", true);
+                order.set_ValueOfColumn("SyncDate", 
+                                       new Timestamp(System.currentTimeMillis()));
+                order.saveEx();
+                
+                log.info("Order " + order.getDocumentNo() + " synced to external system");
+            } else {
+                // Log warning but don't fail the completion
+                log.warning("Failed to sync order " + order.getDocumentNo());
+            }
+        } catch (Exception e) {
+            log.log(Level.SEVERE, "Error syncing order", e);
+            // Don't return error - allow completion to proceed
+        }
+    }
+    
+    return null;
+}
+```
+
+### Example 4: Audit Trail
+
+Log changes to sensitive fields:
+
+```java
+private String invoiceModelChange(PO po, int type) {
+    if (type == ModelValidator.TYPE_BEFORE_CHANGE) {
+        MInvoice invoice = (MInvoice) po;
+        
+        // Check if payment terms changed
+        if (po.is_ValueChanged("C_PaymentTerm_ID")) {
+            int oldValue = (Integer) po.get_ValueOld("C_PaymentTerm_ID");
+            int newValue = invoice.getC_PaymentTerm_ID();
+            
+            // Log the change
+            String msg = "Invoice " + invoice.getDocumentNo() + 
+                        " payment term changed from " + oldValue + 
+                        " to " + newValue + 
+                        " by user " + Env.getAD_User_ID(po.getCtx());
+            
+            log.warning(msg);
+            
+            // Optionally create audit record
+            createAuditLog(invoice, "C_PaymentTerm_ID", oldValue, newValue);
+        }
+    }
+    
+    return null;
+}
+
+private void createAuditLog(PO po, String columnName, Object oldValue, Object newValue) {
+    // Create custom audit log record
+    // Implementation depends on your audit table structure
+}
+```
+
+## Checking Changed Values
+
+```java
+// Check if value changed
+if (po.is_ValueChanged("C_BPartner_ID")) {
+    // Value changed
+}
+
+// Get old value
+Integer oldBP = (Integer) po.get_ValueOld("C_BPartner_ID");
+
+// Get new value  
+Integer newBP = po.get_ValueAsInt("C_BPartner_ID");
+
+// Check multiple fields
+if (po.is_ValueChanged("Qty") || po.is_ValueChanged("Price")) {
+    // Recalculate total
+}
+```
+
+## Accessing Model Data
+
+```java
+private String orderDocValidate(PO po, int timing) {
+    // Cast to specific type
+    MOrder order = (MOrder) po;
+    
+    // Access standard getters
+    String docNo = order.getDocumentNo();
+    int bpID = order.getC_BPartner_ID();
+    BigDecimal total = order.getGrandTotal();
+    
+    // Access via PO methods
+    String docStatus = po.get_ValueAsString("DocStatus");
+    Integer orgID = po.get_ValueAsInt("AD_Org_ID");
+    
+    // Get related records
+    MBPartner bp = new MBPartner(po.getCtx(), bpID, po.get_TrxName());
+    MOrderLine[] lines = order.getLines();
+    
+    // Check document type
+    if (order.isSOTrx()) {
+        // Sales order logic
+    } else {
+        // Purchase order logic
+    }
+    
+    return null;
+}
+```
+
+## Registering a Model Validator
+
+### Method 1: Application Dictionary
+
+Create record in `AD_ModelValidator`:
+
+```sql
+INSERT INTO AD_ModelValidator (
+    AD_ModelValidator_ID, AD_Client_ID, AD_Org_ID,
+    Name, Description, EntityType,
+    ModelValidationClass, SeqNo
+) VALUES (
+    200001, 0, 0,
+    'Custom Business Rules', 
+    'Validates orders and invoices',
+    'U',  -- EntityType = U for User
+    'com.yourcompany.validator.CustomValidator',
+    10  -- Execution sequence
+);
+```
+
+### Method 2: Plugin Extension Point
+
+Create `plugin.xml`:
+
+```xml plugin.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+    <extension
+        id="com.yourcompany.customValidator"
+        name="Custom Business Rules"
+        point="org.adempiere.base.ModelValidator">
+        <listener
+            class="com.yourcompany.validator.CustomValidator"
+            priority="0">
+        </listener>
+    </extension>
+</plugin>
+```
+
+Then reference in Application Dictionary:
+
+```sql
+UPDATE AD_ModelValidator
+SET ModelValidationClass = 'com.yourcompany.customValidator'
+WHERE AD_ModelValidator_ID = 200001;
+```
+
+## Event Manager (Modern Approach)
+
+For new development, consider using the Event Manager service:
+
+```java
+package com.yourcompany.event;
+
+import org.adempiere.base.event.AbstractEventHandler;
+import org.adempiere.base.event.IEventTopics;
+import org.compiere.model.MOrder;
+import org.compiere.model.PO;
+import org.osgi.service.event.Event;
+
+public class OrderEventHandler extends AbstractEventHandler {
+    
+    @Override
+    protected void initialize() {
+        // Register for order events
+        registerTableEvent(IEventTopics.PO_BEFORE_CHANGE, MOrder.Table_Name);
+        registerTableEvent(IEventTopics.PO_AFTER_CHANGE, MOrder.Table_Name);
+        registerTableEvent(IEventTopics.DOC_BEFORE_COMPLETE, MOrder.Table_Name);
+        registerTableEvent(IEventTopics.DOC_AFTER_COMPLETE, MOrder.Table_Name);
+    }
+    
+    @Override
+    protected void doHandleEvent(Event event) {
+        String topic = event.getTopic();
+        PO po = getPO(event);
+        
+        if (po instanceof MOrder) {
+            MOrder order = (MOrder) po;
+            
+            if (topic.equals(IEventTopics.DOC_BEFORE_COMPLETE)) {
+                // Validate before complete
+                validateOrder(order);
+            }
+            else if (topic.equals(IEventTopics.DOC_AFTER_COMPLETE)) {
+                // Sync after complete
+                syncOrder(order);
+            }
+        }
+    }
+    
+    private void validateOrder(MOrder order) {
+        // Validation logic
+    }
+    
+    private void syncOrder(MOrder order) {
+        // Sync logic
+    }
+}
+```
+
+Register as OSGi service in `OSGI-INF/OrderEventHandler.xml`:
+
+```xml OSGI-INF/OrderEventHandler.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+    immediate="true"
+    name="com.yourcompany.event.OrderEventHandler">
+    <implementation class="com.yourcompany.event.OrderEventHandler"/>
+    <reference 
+        bind="bindEventManager" 
+        cardinality="1..1" 
+        interface="org.adempiere.base.event.IEventManager" 
+        name="IEventManager" 
+        policy="static"/>
+</scr:component>
+```
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Return null for success">
+Always return `null` when validation passes. Return an error message string only when validation fails.
+</Accordion>
+
+<Accordion title="Use appropriate timing">
+Use `BEFORE_*` events for validation, `AFTER_*` events for side effects:
+```java
+if (timing == TIMING_BEFORE_COMPLETE) {
+    // Validate - can prevent completion
+}
+if (timing == TIMING_AFTER_COMPLETE) {
+    // Side effects - completion already happened
+}
+```
+</Accordion>
+
+<Accordion title="Don't modify PO in AFTER events">
+After events have already committed the transaction. Modifications require a new save:
+```java
+if (type == TYPE_AFTER_CHANGE) {
+    // Don't call po.saveEx() here - will cause recursion
+    // Use a separate transaction if needed
+}
+```
+</Accordion>
+
+<Accordion title="Handle exceptions gracefully">
+```java
+try {
+    // Your logic
+} catch (Exception e) {
+    log.log(Level.SEVERE, "Validation error", e);
+    return "Error: " + e.getMessage();
+}
+```
+</Accordion>
+
+<Accordion title="Check table name">
+Validators can be called for multiple tables:
+```java
+if (!po.get_TableName().equals("C_Order"))
+    return null;
+```
+</Accordion>
+
+</AccordionGroup>
+
+## Performance Considerations
+
+- Validators execute for **every** save/change - keep them fast
+- Avoid complex queries in validators
+- Don't load unnecessary related records
+- Cache frequently accessed data
+- Use indexes on custom validation columns
+
+```java
+// Bad - loads all lines unnecessarily
+MOrderLine[] lines = order.getLines();
+for (MOrderLine line : lines) {
+    // Process each line
+}
+
+// Good - use SQL count if you just need quantity
+int lineCount = DB.getSQLValue(po.get_TrxName(),
+    "SELECT COUNT(*) FROM C_OrderLine WHERE C_Order_ID=?",
+    order.getC_Order_ID());
+```
+
+<Warning>
+Model validators execute synchronously in the save/process transaction. Slow validators will impact user experience and system performance.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Callouts" icon="phone" href="/development/callouts">
+  Implement field-level triggers
+</Card>
+
+<Card title="Processes" icon="gears" href="/development/processes">
+  Create batch processes
+</Card>
+
+</CardGroup>

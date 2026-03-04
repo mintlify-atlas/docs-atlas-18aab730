@@ -1,0 +1,758 @@
+---
+title: SOAP API
+description: Full-featured SOAP web services with WSDL definitions for enterprise integration
+icon: file-code
+---
+
+iDempiere's SOAP API provides comprehensive web services with WSDL definitions for robust enterprise integration. All services support standard SOAP protocols with XML Schema validation.
+
+## Service URLs
+
+### ModelADService
+
+<CodeGroup>
+```text Service Endpoint
+https://your-server:8443/ADInterface/services/ModelADService
+```
+
+```text WSDL URL
+https://your-server:8443/ADInterface/services/ModelADService?wsdl
+```
+
+```text Schema Location
+/WEB-INF/xsd/idempiere-schema.xsd
+```
+</CodeGroup>
+
+### CompositeService
+
+<CodeGroup>
+```text Service Endpoint
+https://your-server:8443/ADInterface/services/compositeInterface
+```
+
+```text WSDL URL
+https://your-server:8443/ADInterface/services/compositeInterface?wsdl
+```
+</CodeGroup>
+
+## SOAP Configuration
+
+### Namespace
+
+```xml
+xmlns:_0="http://idempiere.org/ADInterface/1_0"
+```
+
+### SOAP Binding
+
+- **Style**: RPC
+- **Use**: LITERAL
+- **Parameter Style**: WRAPPED
+
+### Data Binding
+
+Services use Apache XMLBeans for data binding, providing type-safe XML manipulation.
+
+## ModelADService Operations
+
+### createData
+
+Create a new record in an iDempiere table.
+
+<CodeGroup>
+```xml SOAP Request
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:createData>
+      <_0:ModelCRUDRequest>
+        <_0:ModelCRUD>
+          <_0:serviceType>CreateBPartner</_0:serviceType>
+          <_0:TableName>C_BPartner</_0:TableName>
+          <_0:RecordID>0</_0:RecordID>
+          <_0:Action>Create</_0:Action>
+          <_0:DataRow>
+            <_0:field column="Value">
+              <_0:val>CUST-100</_0:val>
+            </_0:field>
+            <_0:field column="Name">
+              <_0:val><![CDATA[Acme Corporation]]></_0:val>
+            </_0:field>
+            <_0:field column="IsCustomer">
+              <_0:val>Y</_0:val>
+            </_0:field>
+            <_0:field column="C_BP_Group_ID">
+              <_0:val>103</_0:val>
+            </_0:field>
+          </_0:DataRow>
+        </_0:ModelCRUD>
+        <_0:ADLoginRequest>
+          <_0:user>WebService</_0:user>
+          <_0:pass>WebService</_0:pass>
+          <_0:lang>en_US</_0:lang>
+          <_0:ClientID>11</_0:ClientID>
+          <_0:RoleID>50004</_0:RoleID>
+          <_0:OrgID>11</_0:OrgID>
+          <_0:WarehouseID>103</_0:WarehouseID>
+          <_0:stage>9</_0:stage>
+        </_0:ADLoginRequest>
+      </_0:ModelCRUDRequest>
+    </_0:createData>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
+```xml SOAP Response
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <ns1:createDataResponse xmlns:ns1="http://idempiere.org/ADInterface/1_0">
+      <StandardResponse IsError="false" IsRolledBack="false" RecordID="1000025">
+        <outputFields>
+          <outputField column="C_BPartner_ID" value="1000025" Text="1000025"/>
+          <outputField column="Value" value="CUST-100" Text="CUST-100"/>
+          <outputField column="Name" value="Acme Corporation" Text="Acme Corporation"/>
+        </outputFields>
+      </StandardResponse>
+    </ns1:createDataResponse>
+  </soap:Body>
+</soap:Envelope>
+```
+</CodeGroup>
+
+### readData
+
+Read a single record by RecordID.
+
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:readData>
+      <_0:ModelCRUDRequest>
+        <_0:ModelCRUD>
+          <_0:serviceType>ReadBPartner</_0:serviceType>
+          <_0:TableName>C_BPartner</_0:TableName>
+          <_0:RecordID>1000025</_0:RecordID>
+          <_0:Action>Read</_0:Action>
+        </_0:ModelCRUD>
+        <_0:ADLoginRequest>
+          <!-- login details -->
+        </_0:ADLoginRequest>
+      </_0:ModelCRUDRequest>
+    </_0:readData>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
+### updateData
+
+Update an existing record.
+
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:updateData>
+      <_0:ModelCRUDRequest>
+        <_0:ModelCRUD>
+          <_0:serviceType>UpdateBPartner</_0:serviceType>
+          <_0:TableName>C_BPartner</_0:TableName>
+          <_0:RecordID>1000025</_0:RecordID>
+          <_0:Action>Update</_0:Action>
+          <_0:DataRow>
+            <_0:field column="Name">
+              <_0:val><![CDATA[Acme Corporation - Updated]]></_0:val>
+            </_0:field>
+            <_0:field column="Description">
+              <_0:val>Updated via SOAP API</_0:val>
+            </_0:field>
+          </_0:DataRow>
+        </_0:ModelCRUD>
+        <_0:ADLoginRequest>
+          <!-- login details -->
+        </_0:ADLoginRequest>
+      </_0:ModelCRUDRequest>
+    </_0:updateData>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
+### deleteData
+
+Delete a record by RecordID.
+
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:deleteData>
+      <_0:ModelCRUDRequest>
+        <_0:ModelCRUD>
+          <_0:serviceType>DeleteBPartner</_0:serviceType>
+          <_0:TableName>C_BPartner</_0:TableName>
+          <_0:RecordID>1000025</_0:RecordID>
+          <_0:Action>Delete</_0:Action>
+        </_0:ModelCRUD>
+        <_0:ADLoginRequest>
+          <!-- login details -->
+        </_0:ADLoginRequest>
+      </_0:ModelCRUDRequest>
+    </_0:deleteData>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
+### queryData
+
+Query multiple records with filters and pagination.
+
+<CodeGroup>
+```xml SQL Filter
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:queryData>
+      <_0:ModelCRUDRequest>
+        <_0:ModelCRUD>
+          <_0:serviceType>QueryBPartner</_0:serviceType>
+          <_0:TableName>C_BPartner</_0:TableName>
+          <_0:RecordID>0</_0:RecordID>
+          <_0:Filter>IsCustomer='Y' AND IsActive='Y'</_0:Filter>
+          <_0:Action>Read</_0:Action>
+          <_0:Offset>0</_0:Offset>
+          <_0:Limit>50</_0:Limit>
+        </_0:ModelCRUD>
+        <_0:ADLoginRequest>
+          <!-- login details -->
+        </_0:ADLoginRequest>
+      </_0:ModelCRUDRequest>
+    </_0:queryData>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
+```xml Field Filter
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:queryData>
+      <_0:ModelCRUDRequest>
+        <_0:ModelCRUD>
+          <_0:serviceType>QueryBPartner</_0:serviceType>
+          <_0:TableName>C_BPartner</_0:TableName>
+          <_0:RecordID>0</_0:RecordID>
+          <_0:Action>Read</_0:Action>
+          <_0:DataRow>
+            <_0:field column="C_BP_Group_ID">
+              <_0:val>103</_0:val>
+            </_0:field>
+            <_0:field column="IsActive">
+              <_0:val>Y</_0:val>
+            </_0:field>
+          </_0:DataRow>
+          <_0:Offset>0</_0:Offset>
+          <_0:Limit>100</_0:Limit>
+        </_0:ModelCRUD>
+        <_0:ADLoginRequest>
+          <!-- login details -->
+        </_0:ADLoginRequest>
+      </_0:ModelCRUDRequest>
+    </_0:queryData>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+</CodeGroup>
+
+### createUpdateData
+
+Create or update a record (upsert operation).
+
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:createUpdateData>
+      <_0:ModelCRUDRequest>
+        <_0:ModelCRUD>
+          <_0:serviceType>CreateUpdateBPartner</_0:serviceType>
+          <_0:TableName>C_BPartner</_0:TableName>
+          <_0:RecordID>0</_0:RecordID>
+          <_0:recordIDVariable>@C_BPartner_ID@</_0:recordIDVariable>
+          <_0:Action>CreateUpdate</_0:Action>
+          <_0:DataRow>
+            <_0:field column="Value">
+              <_0:val>CUST-100</_0:val>
+            </_0:field>
+            <_0:field column="Name">
+              <_0:val>Acme Corporation</_0:val>
+            </_0:field>
+          </_0:DataRow>
+        </_0:ModelCRUD>
+        <_0:ADLoginRequest>
+          <!-- login details -->
+        </_0:ADLoginRequest>
+      </_0:ModelCRUDRequest>
+    </_0:createUpdateData>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
+### runProcess
+
+Execute an iDempiere process or report.
+
+<CodeGroup>
+```xml Process Request
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:runProcess>
+      <_0:ModelRunProcessRequest>
+        <_0:ModelRunProcess AD_Process_ID="119" AD_Menu_ID="0" AD_Record_ID="0">
+          <_0:serviceType>RunInvoiceGenerate</_0:serviceType>
+          <_0:ParamValues>
+            <_0:field column="C_DocType_ID">
+              <_0:val>1000000</_0:val>
+            </_0:field>
+            <_0:field column="DateInvoiced">
+              <_0:val>2024-03-01 00:00:00</_0:val>
+            </_0:field>
+            <_0:field column="C_BPartner_ID">
+              <_0:val>118</_0:val>
+            </_0:field>
+          </_0:ParamValues>
+        </_0:ModelRunProcess>
+        <_0:ADLoginRequest>
+          <!-- login details -->
+        </_0:ADLoginRequest>
+      </_0:ModelRunProcessRequest>
+    </_0:runProcess>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
+```xml Process Response
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <ns1:runProcessResponse xmlns:ns1="http://idempiere.org/ADInterface/1_0">
+      <RunProcessResponse IsError="false" IsReport="true" ReportFormat="pdf">
+        <Error></Error>
+        <Summary>Generated 5 invoices</Summary>
+        <LogInfo>Process completed successfully</LogInfo>
+        <Data>JVBERi0xLjQKJeLjz9MKMyAwIG9iaiA8PC9GaWx0ZXIvRmxhdGVEZWNvZGU...</Data>
+      </RunProcessResponse>
+    </ns1:runProcessResponse>
+  </soap:Body>
+</soap:Envelope>
+```
+</CodeGroup>
+
+### setDocAction
+
+Process a document with a specific action.
+
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:setDocAction>
+      <_0:ModelSetDocActionRequest>
+        <_0:ModelSetDocAction>
+          <_0:serviceType>CompleteOrder</_0:serviceType>
+          <_0:tableName>C_Order</_0:tableName>
+          <_0:recordID>1000</_0:recordID>
+          <_0:docAction>CO</_0:docAction>
+        </_0:ModelSetDocAction>
+        <_0:ADLoginRequest>
+          <!-- login details -->
+        </_0:ADLoginRequest>
+      </_0:ModelSetDocActionRequest>
+    </_0:setDocAction>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
+**Document Actions:**
+- `CO` - Complete
+- `CL` - Close
+- `VO` - Void
+- `RE` - Reverse - Correct
+- `RC` - Reverse - Accrual  
+- `RA` - Reactivate
+- `PR` - Post
+
+### getList
+
+Retrieve lookup values from a reference.
+
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:getList>
+      <_0:ModelGetListRequest>
+        <_0:ModelGetList>
+          <_0:serviceType>GetListSalesRegions</_0:serviceType>
+          <_0:AD_Reference_ID>144</_0:AD_Reference_ID>
+          <_0:Filter></_0:Filter>
+        </_0:ModelGetList>
+        <_0:ADLoginRequest>
+          <!-- login details -->
+        </_0:ADLoginRequest>
+      </_0:ModelGetListRequest>
+    </_0:getList>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
+## CompositeService Operations
+
+### compositeOperation
+
+Execute multiple operations in a single atomic transaction.
+
+```xml
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:_0="http://idempiere.org/ADInterface/1_0">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <_0:compositeOperation>
+      <_0:CompositeRequest>
+        <_0:ADLoginRequest>
+          <_0:user>WebService</_0:user>
+          <_0:pass>WebService</_0:pass>
+          <_0:lang>en_US</_0:lang>
+          <_0:ClientID>11</_0:ClientID>
+          <_0:RoleID>50004</_0:RoleID>
+          <_0:OrgID>11</_0:OrgID>
+          <_0:WarehouseID>103</_0:WarehouseID>
+          <_0:stage>9</_0:stage>
+        </_0:ADLoginRequest>
+        <_0:serviceType>CompositeOrderEntry</_0:serviceType>
+        <_0:operations>
+          <!-- Operation 1: Create Order -->
+          <_0:operation preCommit="false" postCommit="false">
+            <_0:TargetPort>createData</_0:TargetPort>
+            <_0:ModelCRUD>
+              <_0:serviceType>CreateOrder</_0:serviceType>
+              <_0:TableName>C_Order</_0:TableName>
+              <_0:RecordID>0</_0:RecordID>
+              <_0:Action>Create</_0:Action>
+              <_0:DataRow>
+                <_0:field column="C_BPartner_ID">
+                  <_0:val>118</_0:val>
+                </_0:field>
+                <_0:field column="C_DocTypeTarget_ID">
+                  <_0:val>135</_0:val>
+                </_0:field>
+              </_0:DataRow>
+            </_0:ModelCRUD>
+          </_0:operation>
+          
+          <!-- Operation 2: Create Order Line -->
+          <_0:operation preCommit="false" postCommit="false">
+            <_0:TargetPort>createData</_0:TargetPort>
+            <_0:ModelCRUD>
+              <_0:serviceType>CreateOrderLine</_0:serviceType>
+              <_0:TableName>C_OrderLine</_0:TableName>
+              <_0:RecordID>0</_0:RecordID>
+              <_0:Action>Create</_0:Action>
+              <_0:DataRow>
+                <_0:field column="C_Order_ID">
+                  <_0:val>@C_Order.C_Order_ID@</_0:val>
+                </_0:field>
+                <_0:field column="M_Product_ID">
+                  <_0:val>137</_0:val>
+                </_0:field>
+                <_0:field column="QtyOrdered">
+                  <_0:val>5</_0:val>
+                </_0:field>
+              </_0:DataRow>
+            </_0:ModelCRUD>
+          </_0:operation>
+          
+          <!-- Operation 3: Complete Order -->
+          <_0:operation preCommit="true" postCommit="false">
+            <_0:TargetPort>setDocAction</_0:TargetPort>
+            <_0:ModelSetDocAction>
+              <_0:serviceType>CompleteOrder</_0:serviceType>
+              <_0:tableName>C_Order</_0:tableName>
+              <_0:recordID>0</_0:recordID>
+              <_0:recordIDVariable>@C_Order.C_Order_ID@</_0:recordIDVariable>
+              <_0:docAction>CO</_0:docAction>
+            </_0:ModelSetDocAction>
+          </_0:operation>
+        </_0:operations>
+      </_0:CompositeRequest>
+    </_0:compositeOperation>
+  </soapenv:Body>
+</soapenv:Envelope>
+```
+
+**Composite Features:**
+
+<ParamField path="preCommit" type="boolean">
+  Commit transaction before executing this operation
+</ParamField>
+
+<ParamField path="postCommit" type="boolean">
+  Commit transaction after executing this operation
+</ParamField>
+
+<ParamField path="Context Variables" type="string">
+  Reference values from previous operations using `@TableName.ColumnName@` syntax
+</ParamField>
+
+## XML Schema Types
+
+### WindowTabData
+
+Response structure for read and query operations.
+
+```xml
+<WindowTabData NumRows="2" TotalRows="10" StartRow="0">
+  <Success>true</Success>
+  <DataSet>
+    <DataRow>
+      <field column="C_BPartner_ID" type="ID">
+        <val>118</val>
+      </field>
+      <field column="Value" type="String">
+        <val>CUST-001</val>
+      </field>
+      <field column="Name" type="String">
+        <val>Customer Name</val>
+      </field>
+      <field column="C_BP_Group_ID" type="TableDir" lval="Standard">
+        <val>103</val>
+        <lookup>
+          <lv val="Standard" key="103"/>
+        </lookup>
+      </field>
+    </DataRow>
+  </DataSet>
+</WindowTabData>
+```
+
+### DataField Attributes
+
+<ResponseField name="@column" type="string">
+  Column name
+</ResponseField>
+
+<ResponseField name="@type" type="string">
+  Display type (ID, String, Integer, Date, etc.)
+</ResponseField>
+
+<ResponseField name="@lval" type="string">
+  Display value for lookup fields
+</ResponseField>
+
+<ResponseField name="@disp" type="boolean">
+  Whether field is displayed
+</ResponseField>
+
+<ResponseField name="@edit" type="boolean">
+  Whether field is editable
+</ResponseField>
+
+<ResponseField name="@error" type="boolean">
+  Whether field has an error
+</ResponseField>
+
+### StandardResponse
+
+Standard response for CRUD operations.
+
+```xml
+<StandardResponse IsError="false" IsRolledBack="false" RecordID="1000025">
+  <outputFields>
+    <outputField column="C_BPartner_ID" value="1000025" Text="1000025"/>
+    <outputField column="Value" value="CUST-100" Text="CUST-100"/>
+  </outputFields>
+</StandardResponse>
+```
+
+## Client Generation
+
+Generate SOAP client code from WSDL:
+
+<CodeGroup>
+```bash Java (JAX-WS)
+# Generate client stubs
+wsimport -keep -s src -p com.mycompany.idempiere.ws \
+  https://localhost:8443/ADInterface/services/ModelADService?wsdl
+```
+
+```bash .NET (WCF)
+# Add service reference in Visual Studio
+Add-WsProxy -Uri "https://localhost:8443/ADInterface/services/ModelADService?wsdl" `
+  -Namespace "MyCompany.iDempiere.WebServices"
+```
+
+```bash PHP (SoapClient)
+<?php
+$client = new SoapClient(
+  'https://localhost:8443/ADInterface/services/ModelADService?wsdl',
+  array('trace' => 1)
+);
+
+$login = array(
+  'user' => 'WebService',
+  'pass' => 'WebService',
+  'lang' => 'en_US',
+  'ClientID' => 11,
+  'RoleID' => 50004,
+  'OrgID' => 11,
+  'WarehouseID' => 103,
+  'stage' => 9
+);
+?>
+```
+
+```python Python (Zeep)
+import zeep
+
+wsdl = 'https://localhost:8443/ADInterface/services/ModelADService?wsdl'
+client = zeep.Client(wsdl=wsdl)
+
+# Create login request
+login = {
+    'user': 'WebService',
+    'pass': 'WebService',
+    'lang': 'en_US',
+    'ClientID': 11,
+    'RoleID': 50004,
+    'OrgID': 11,
+    'WarehouseID': 103,
+    'stage': 9
+}
+```
+</CodeGroup>
+
+## WSDL Schema Reference
+
+Key schema definitions from `idempiere-schema.xsd`:
+
+### Complex Types
+
+<AccordionGroup>
+  <Accordion title="WindowTabData">
+    Main data structure for query results
+    
+    - `DataSet` - Collection of DataRow elements
+    - `RowCount` - Number of rows returned
+    - `Success` - Operation success flag
+    - `Error` - Error message if failed
+    - `@NumRows` - Number of rows in this response
+    - `@TotalRows` - Total rows matching query
+    - `@StartRow` - Starting row number
+  </Accordion>
+  
+  <Accordion title="ModelCRUD">
+    CRUD operation definition
+    
+    - `serviceType` - Web service type name
+    - `TableName` - Database table name
+    - `RecordID` - Record identifier
+    - `Filter` - SQL WHERE clause
+    - `Action` - Operation: Create, Read, Update, Delete, CreateUpdate
+    - `Offset` - Pagination offset
+    - `Limit` - Pagination limit
+    - `DataRow` - Field values
+  </Accordion>
+  
+  <Accordion title="ModelRunProcess">
+    Process execution definition
+    
+    - `serviceType` - Web service type name
+    - `@AD_Process_ID` - Process identifier
+    - `@AD_Record_ID` - Context record ID
+    - `ParamValues` - Process parameter values
+  </Accordion>
+  
+  <Accordion title="ModelSetDocAction">
+    Document action definition
+    
+    - `serviceType` - Web service type name
+    - `tableName` - Document table name
+    - `recordID` - Document record ID
+    - `recordIDVariable` - Context variable for record ID
+    - `docAction` - Action code (CO, CL, VO, etc.)
+  </Accordion>
+</AccordionGroup>
+
+## Testing SOAP Services
+
+### Using SoapUI
+
+<Steps>
+  <Step title="Create New SOAP Project">
+    File > New SOAP Project
+    
+    Enter WSDL URL: `https://localhost:8443/ADInterface/services/ModelADService?wsdl`
+  </Step>
+  
+  <Step title="Configure Authentication">
+    All requests include ADLoginRequest in the SOAP body (not HTTP authentication)
+  </Step>
+  
+  <Step title="Test Operations">
+    Expand service operations and generate sample requests
+    
+    Modify the ADLoginRequest section with valid credentials
+  </Step>
+  
+  <Step title="Save Test Scripts">
+    Save requests as test cases for regression testing
+  </Step>
+</Steps>
+
+### Using Postman
+
+iDempiere includes Postman collections in:
+
+```
+/testScripts/postman/iDempiereWebServices.postman_collection.json
+/testScripts/postman/idempiere-soap-as-rest.postman_collection.json
+```
+
+Import these collections for pre-configured test requests.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use CDATA for Text" icon="code">
+    Wrap text values containing special characters in CDATA sections:
+    ```xml
+    <val><![CDATA[AT&T Corporation]]></val>
+    ```
+  </Card>
+  
+  <Card title="Validate Against Schema" icon="file-check">
+    Use the XSD schema to validate requests before sending to catch errors early.
+  </Card>
+  
+  <Card title="Handle SOAP Faults" icon="triangle-exclamation">
+    Implement proper SOAP fault handling in your client code to catch service errors.
+  </Card>
+  
+  <Card title="Cache WSDL Locally" icon="download">
+    Download and cache WSDL files locally for faster client initialization and offline development.
+  </Card>
+</CardGroup>
+
+<Warning>
+  Always test SOAP services in a development environment before deploying to production. CRUD operations directly modify data.
+</Warning>

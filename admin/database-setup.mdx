@@ -1,0 +1,448 @@
+---
+title: Database Setup
+description: Install and configure PostgreSQL or Oracle databases for iDempiere
+---
+
+## Overview
+
+iDempiere supports both PostgreSQL and Oracle databases. This guide covers installation, configuration, and optimization for both database systems.
+
+## Supported Databases
+
+- **PostgreSQL**: Recommended open-source option (version 12+)
+- **Oracle**: Enterprise option (version 11g+, including Oracle XE)
+
+<Tip>
+PostgreSQL is the recommended database for most installations due to its open-source nature, excellent performance, and lower cost.
+</Tip>
+
+## PostgreSQL Setup
+
+### Installation
+
+<Steps>
+  <Step title="Install PostgreSQL">
+    **Ubuntu/Debian:**
+    ```bash
+    sudo apt update
+    sudo apt install postgresql postgresql-contrib
+    ```
+    
+    **RHEL/CentOS:**
+    ```bash
+    sudo dnf install postgresql-server postgresql-contrib
+    sudo postgresql-setup --initdb
+    sudo systemctl start postgresql
+    sudo systemctl enable postgresql
+    ```
+  </Step>
+  
+  <Step title="Create database user">
+    Switch to postgres user and create the iDempiere database user:
+    ```bash
+    sudo -u postgres psql
+    ```
+    
+    Then execute:
+    ```sql
+    CREATE USER adempiere WITH CREATEDB CREATEUSER PASSWORD 'adempiere';
+    ```
+  </Step>
+  
+  <Step title="Create database">
+    ```sql
+    CREATE DATABASE idempiere
+      WITH ENCODING='UTF8'
+           OWNER=adempiere;
+    ```
+    
+    Exit psql:
+    ```sql
+    \q
+    ```
+  </Step>
+</Steps>
+
+### PostgreSQL Configuration
+
+#### Configure Authentication
+
+Edit `pg_hba.conf` to allow iDempiere connections:
+
+```conf title="/etc/postgresql/14/main/pg_hba.conf"
+# Allow local connections
+local   all             adempiere                               md5
+host    all             adempiere       127.0.0.1/32            md5
+host    all             adempiere       ::1/128                 md5
+
+# Allow remote connections (if needed)
+host    idempiere       adempiere       0.0.0.0/0               md5
+```
+
+<Warning>
+Allowing remote connections from all IPs (0.0.0.0/0) is a security risk. Use specific IP ranges in production.
+</Warning>
+
+#### Optimize PostgreSQL Settings
+
+Edit `postgresql.conf` for better performance:
+
+```conf title="/etc/postgresql/14/main/postgresql.conf"
+# Connection settings
+max_connections = 200
+shared_buffers = 256MB
+
+# Memory settings
+effective_cache_size = 1GB
+maintenance_work_mem = 128MB
+work_mem = 8MB
+
+# Write-ahead log
+wal_buffers = 16MB
+max_wal_size = 2GB
+min_wal_size = 1GB
+
+# Query planning
+random_page_cost = 1.1
+effective_io_concurrency = 200
+
+# Logging
+log_min_duration_statement = 1000
+log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+log_checkpoints = on
+log_connections = on
+log_disconnections = on
+log_lock_waits = on
+```
+
+Restart PostgreSQL:
+
+```bash
+sudo systemctl restart postgresql
+```
+
+### PostgreSQL Database Creation Script
+
+iDempiere provides scripts for database initialization. The `CreateUser.sql` script:
+
+```sql title="CreateUser.sql (PostgreSQL)"
+/*
+ * Drop and re-create database user
+ * Parameters: UserID UserPwd
+ * Run as postgres superuser
+ */
+DROP DATABASE IF EXISTS idempiere;
+DROP USER IF EXISTS adempiere;
+
+CREATE USER adempiere WITH CREATEDB CREATEUSER PASSWORD 'adempiere';
+
+CREATE DATABASE idempiere
+  WITH ENCODING='UNICODE'
+       OWNER=adempiere;
+```
+
+## Oracle Setup
+
+### Installation Prerequisites
+
+<Steps>
+  <Step title="Install Oracle Database">
+    Follow Oracle's installation guide for your platform. Oracle XE (Express Edition) is suitable for smaller installations.
+  </Step>
+  
+  <Step title="Set environment variables">
+    ```bash
+    export ORACLE_HOME=/u01/app/oracle/product/19.0.0/dbhome_1
+    export ORACLE_SID=idempiere
+    export PATH=$ORACLE_HOME/bin:$PATH
+    ```
+  </Step>
+</Steps>
+
+### Create Oracle User
+
+iDempiere provides a user creation script:
+
+```sql title="CreateUser.sql (Oracle)"
+/*
+ * Drop and re-create Oracle user
+ * Parameters: UserID UserPwd
+ * Run as SYSTEM user
+ */
+DROP USER adempiere CASCADE
+/
+
+CREATE USER adempiere IDENTIFIED BY adempiere
+    DEFAULT TABLESPACE USERS
+    TEMPORARY TABLESPACE TEMP
+    PROFILE DEFAULT
+    ACCOUNT UNLOCK
+/
+
+GRANT CONNECT TO adempiere
+/
+
+GRANT DBA TO adempiere
+/
+
+GRANT RESOURCE TO adempiere
+/
+
+GRANT UNLIMITED TABLESPACE TO adempiere
+/
+
+ALTER USER adempiere DEFAULT ROLE CONNECT, RESOURCE, DBA
+/
+
+GRANT CREATE TABLE TO adempiere
+/
+```
+
+### Run the Creation Script
+
+```bash
+sqlplus system/password @CreateUser.sql adempiere adempiere
+```
+
+### Oracle Configuration
+
+#### Set Oracle V8Compatible
+
+iDempiere requires Oracle V8 compatible mode for date/time handling:
+
+```bash
+export ORACLE_V8_COMPATIBLE=true
+```
+
+Or set in Java system properties:
+
+```bash
+-Doracle.jdbc.V8Compatible=true
+```
+
+#### Connection String Format
+
+For Oracle, the connection string uses TNS format or service name:
+
+```properties
+# Using service name
+ADEMPIERE_DB_SERVER=localhost
+ADEMPIERE_DB_PORT=1521
+ADEMPIERE_DB_NAME=idempiere
+
+# Or using TNS
+ADEMPIERE_DB_URL=jdbc:oracle:thin:@//localhost:1521/idempiere
+```
+
+## Database Functions
+
+iDempiere requires custom database functions for both PostgreSQL and Oracle.
+
+### PostgreSQL Functions
+
+Functions are stored in `db/postgresql/functions/`. Key functions include:
+
+- **C_Currency_Convert**: Currency conversion
+- **BOM_Qty_OnHand**: Bill of materials quantity calculations
+- **C_Invoice_Open**: Calculate open invoice amounts
+- **Acct_Balance**: Account balance calculations
+
+These are automatically installed during initial setup.
+
+### Oracle Functions
+
+Functions are stored in `db/oracle/functions/`. Oracle-specific functions include:
+
+- **C_Currency_Convert**: Currency conversion
+- **Generate_UUID**: UUID generation
+- **DBA_DisplayType**: Display type helpers
+
+These are automatically installed during initial setup.
+
+## Database Initialization
+
+### Import Initial Data
+
+<Steps>
+  <Step title="Navigate to iDempiere directory">
+    ```bash
+    cd $IDEMPIERE_HOME/utils
+    ```
+  </Step>
+  
+  <Step title="Source environment">
+    ```bash
+    source ./myEnvironment.sh
+    ```
+  </Step>
+  
+  <Step title="Run import script">
+    **PostgreSQL:**
+    ```bash
+    ./RUN_ImportIdempiere.sh
+    ```
+    
+    **Oracle:**
+    ```bash
+    ./RUN_ImportIdempiere.sh
+    ```
+  </Step>
+</Steps>
+
+The import script will:
+- Create database schema
+- Install database functions
+- Import seed data
+- Create default client (GardenWorld demo)
+
+<Warning>
+Initial import can take 30-60 minutes depending on hardware. Do not interrupt the process.
+</Warning>
+
+## Database Maintenance
+
+### PostgreSQL Maintenance
+
+#### Vacuum and Analyze
+
+Regularly vacuum the database:
+
+```bash
+# As postgres user
+vacuumdb -z -d idempiere -U adempiere
+```
+
+Configure autovacuum in `postgresql.conf`:
+
+```conf
+autovacuum = on
+autovacuum_max_workers = 3
+autovacuum_naptime = 1min
+```
+
+#### Reindex
+
+Periodically reindex for optimal performance:
+
+```bash
+reindexdb -d idempiere -U adempiere
+```
+
+### Oracle Maintenance
+
+#### Gather Statistics
+
+```sql
+EXEC DBMS_STATS.GATHER_SCHEMA_STATS('ADEMPIERE');
+```
+
+#### Rebuild Indexes
+
+```sql
+SELECT 'ALTER INDEX ' || index_name || ' REBUILD;'
+FROM user_indexes
+WHERE status = 'UNUSABLE';
+```
+
+## Database Synchronization
+
+Keep database schema in sync with migration scripts:
+
+```bash
+cd $IDEMPIERE_HOME
+./RUN_SyncDB.sh
+```
+
+Or with a specific properties file:
+
+```bash
+./RUN_SyncDB.sh /path/to/idempiere.properties
+```
+
+The sync process:
+1. Checks `AD_MigrationScript` table for applied scripts
+2. Identifies pending migration files
+3. Applies scripts in chronological order
+4. Runs post-migration processes
+5. Updates migration tracking
+
+## Connection Pooling
+
+iDempiere uses HikariCP for connection pooling. The implementation is in:
+
+- `org.compiere.db.DB_PostgreSQL` (PostgreSQL driver)
+- `org.compiere.db.DB_Oracle` (Oracle driver)
+
+### PostgreSQL Driver Configuration
+
+```java
+// Default port
+public static final int DEFAULT_PORT = 5432;
+
+// Driver class
+public static final String DRIVER = "org.postgresql.Driver";
+```
+
+### Oracle Driver Configuration
+
+```java
+// Default port
+public static final int DEFAULT_PORT = 1521;
+
+// Driver class
+public static final String DRIVER = "oracle.jdbc.OracleDriver";
+```
+
+## Troubleshooting
+
+### Connection Refused
+
+**PostgreSQL:**
+```bash
+# Check if PostgreSQL is running
+sudo systemctl status postgresql
+
+# Check listening ports
+sudo netstat -plnt | grep postgres
+
+# Review logs
+sudo tail -f /var/log/postgresql/postgresql-14-main.log
+```
+
+**Oracle:**
+```bash
+# Check listener status
+lsnrctl status
+
+# Start listener if needed
+lsnrctl start
+```
+
+### Authentication Failures
+
+Verify credentials and pg_hba.conf (PostgreSQL) or tnsnames.ora (Oracle).
+
+### Performance Issues
+
+1. Check connection pool settings
+2. Review slow query logs
+3. Analyze query execution plans
+4. Update database statistics
+
+### Migration Script Errors
+
+If migration fails:
+
+1. Check `SyncDB_out_*` files in `/tmp`
+2. Fix errors manually
+3. Run sync again
+
+<Warning>
+Never manually mark migration scripts as applied without actually running them. This will cause schema inconsistencies.
+</Warning>
+
+## See Also
+
+- [System Configuration](/admin/configuration) - Configure iDempiere settings
+- [Migration](/admin/migration) - Manage database migrations
+- [Backup & Restore](/admin/backup-restore) - Database backup strategies

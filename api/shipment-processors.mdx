@@ -1,0 +1,645 @@
+---
+title: "Shipment Processors"
+description: "Integrate shipping carriers with iDempiere through the IShipmentProcessor extension point"
+---
+
+## Overview
+
+The Shipment Processor extension point enables integration with shipping carriers like FedEx, UPS, USPS, DHL, and others. It provides shipment processing, rate inquiry, and shipment voiding capabilities.
+
+## Extension Point
+
+**Extension Point ID**: `org.adempiere.model.IShipmentProcessor`
+
+**Interface**: `org.adempiere.model.IShipmentProcessor`
+
+**Schema Location**: `org.adempiere.base/schema/org.adempiere.model.IShipmentProcessor.exsd`
+
+## IShipmentProcessor Interface
+
+From `org.adempiere.model.IShipmentProcessor`:
+
+```java
+package org.adempiere.model;
+
+import java.util.Properties;
+import org.compiere.model.MShippingTransaction;
+
+/**
+ * Online shipment processor interface
+ * @author Low Heng Sin
+ */
+public interface IShipmentProcessor {
+    
+    /**
+     * Perform online shipment processing
+     * Creates a shipment with the carrier and obtains tracking information
+     * 
+     * @param ctx Context
+     * @param shippingTransaction Shipping transaction with shipment details
+     * @param trxName Transaction name
+     * @return true if success, false otherwise
+     */
+    public boolean processShipment(Properties ctx, 
+                                    MShippingTransaction shippingTransaction, 
+                                    String trxName);
+    
+    /**
+     * Perform shipment rate inquiry
+     * Queries the carrier for shipping rates based on package details
+     * 
+     * @param ctx Context
+     * @param shippingTransaction Shipping transaction with package details
+     * @param isPriviledgedRate True to request account/negotiated rates
+     * @param trxName Transaction name
+     * @return true if success, false otherwise
+     */
+    public boolean rateInquiry(Properties ctx, 
+                                MShippingTransaction shippingTransaction, 
+                                boolean isPriviledgedRate, 
+                                String trxName);
+    
+    /**
+     * Void online shipment
+     * Cancels a previously created shipment with the carrier
+     * 
+     * @param ctx Context
+     * @param shippingTransaction Shipping transaction to void
+     * @param trxName Transaction name
+     * @return true if success, false otherwise
+     */
+    public boolean voidShipment(Properties ctx, 
+                                 MShippingTransaction shippingTransaction, 
+                                 String trxName);
+}
+```
+
+## Extension Point Definition
+
+From `org.adempiere.base/schema/org.adempiere.model.IShipmentProcessor.exsd`:
+
+```xml
+<?xml version='1.0' encoding='UTF-8'?>
+<schema targetNamespace="org.adempiere.base" 
+        xmlns="http://www.w3.org/2001/XMLSchema">
+    <annotation>
+        <appinfo>
+            <meta.schema plugin="org.adempiere.base" 
+                         id="org.adempiere.model.IShipmentProcessor" 
+                         name="Shipment Processor"/>
+        </appinfo>
+        <documentation>
+            Extension to provide shipping integration through specific 
+            shipping processor implementation
+        </documentation>
+    </annotation>
+    
+    <element name="processor">
+        <complexType>
+            <attribute name="priority" type="string">
+                <annotation>
+                    <documentation>
+                        numeric priority value, higher value is of higher priority
+                    </documentation>
+                </annotation>
+            </attribute>
+            <attribute name="class" type="string" use="required">
+                <annotation>
+                    <appinfo>
+                        <meta.attribute kind="java" 
+                            basedOn=":org.adempiere.model.IShipmentProcessor"/>
+                    </appinfo>
+                </annotation>
+            </attribute>
+        </complexType>
+    </element>
+</schema>
+```
+
+## Registering a Shipment Processor
+
+### Plugin XML Declaration
+
+```xml
+<extension
+    id="com.example.shipping.FedexShipmentProcessor"
+    name="FedEx"
+    point="org.adempiere.model.IShipmentProcessor">
+    <processor
+        class="com.example.shipping.FedexShipmentProcessor"
+        priority="0">
+    </processor>
+</extension>
+```
+
+Example from schema documentation:
+
+```xml
+<extension
+    id="org.adempiere.model.FedexShipmentProcessor"
+    name="FedEx"
+    point="org.adempiere.model.IShipmentProcessor">
+    <processor
+        class="org.adempiere.model.FedexShipmentProcessor"
+        priority="0">
+    </processor>
+</extension>
+```
+
+### Database Configuration
+
+In the **X_ShippingProcessor** table:
+
+```sql
+INSERT INTO X_ShippingProcessor (
+    X_ShippingProcessor_ID,
+    Name,
+    ShippingProcessorClass,
+    ...
+) VALUES (
+    1000000,
+    'FedEx',
+    'com.example.shipping.FedexShipmentProcessor',
+    ...
+);
+```
+
+Configuration reference:
+```
+X_ShippingProcessor.ShippingProcessorClass="org.adempiere.model.FedexShipmentProcessor"
+```
+
+## Implementation Example: FedEx Integration
+
+```java
+package com.example.shipping;
+
+import org.adempiere.model.IShipmentProcessor;
+import org.compiere.model.MShippingTransaction;
+import org.compiere.util.CLogger;
+import java.util.Properties;
+import java.math.BigDecimal;
+
+public class FedexShipmentProcessor implements IShipmentProcessor {
+    
+    private static final CLogger log = 
+        CLogger.getCLogger(FedexShipmentProcessor.class);
+    
+    // FedEx API endpoints
+    private static final String FEDEX_SHIP_URL = 
+        "https://ws.fedex.com/web-services/ship";
+    private static final String FEDEX_RATE_URL = 
+        "https://ws.fedex.com/web-services/rate";
+    
+    @Override
+    public boolean processShipment(Properties ctx, 
+                                    MShippingTransaction shipTx, 
+                                    String trxName) {
+        try {
+            log.info("Processing FedEx shipment: " + shipTx.getDocumentNo());
+            
+            // Get FedEx credentials from configuration
+            String accountNumber = getAccountNumber(shipTx);
+            String meterNumber = getMeterNumber(shipTx);
+            String key = getAccountKey(shipTx);
+            String password = getPassword(shipTx);
+            
+            // Build shipment request
+            FedExShipRequest request = new FedExShipRequest();
+            
+            // Authentication
+            request.setAccountNumber(accountNumber);
+            request.setMeterNumber(meterNumber);
+            request.setKey(key);
+            request.setPassword(password);
+            
+            // Shipment details
+            request.setShipDate(shipTx.getShipDate());
+            request.setServiceType(mapServiceType(
+                shipTx.getShippingMethod()));
+            request.setPackagingType(mapPackagingType(
+                shipTx.getPackagingType()));
+            
+            // Shipper information
+            MLocation shipperLoc = shipTx.getShipperLocation();
+            if (shipperLoc != null) {
+                request.setShipperName(shipTx.getShipperName());
+                request.setShipperAddress1(shipperLoc.getAddress1());
+                request.setShipperCity(shipperLoc.getCity());
+                request.setShipperState(shipperLoc.getRegionName());
+                request.setShipperPostalCode(shipperLoc.getPostal());
+                request.setShipperCountry(
+                    shipperLoc.getCountry().getCountryCode());
+                request.setShipperPhone(shipTx.getShipperPhone());
+            }
+            
+            // Recipient information
+            MLocation recipientLoc = shipTx.getRecipientLocation();
+            if (recipientLoc != null) {
+                request.setRecipientName(shipTx.getRecipientName());
+                request.setRecipientAddress1(recipientLoc.getAddress1());
+                request.setRecipientCity(recipientLoc.getCity());
+                request.setRecipientState(recipientLoc.getRegionName());
+                request.setRecipientPostalCode(recipientLoc.getPostal());
+                request.setRecipientCountry(
+                    recipientLoc.getCountry().getCountryCode());
+                request.setRecipientPhone(shipTx.getRecipientPhone());
+            }
+            
+            // Package details
+            request.setPackageCount(shipTx.getPackageCount());
+            request.setWeight(shipTx.getWeight());
+            request.setWeightUnit(shipTx.getWeightUnit());
+            request.setLength(shipTx.getLength());
+            request.setWidth(shipTx.getWidth());
+            request.setHeight(shipTx.getHeight());
+            request.setDimensionUnit(shipTx.getDimensionUnit());
+            
+            // Insurance
+            if (shipTx.getInsuredValue().compareTo(BigDecimal.ZERO) > 0) {
+                request.setInsuredValue(shipTx.getInsuredValue());
+                request.setCurrency(shipTx.getCurrencyCode());
+            }
+            
+            // Reference numbers
+            request.setCustomerReference(shipTx.getDocumentNo());
+            
+            // Send request to FedEx
+            FedExShipResponse response = 
+                sendShipRequest(FEDEX_SHIP_URL, request);
+            
+            if (response == null) {
+                shipTx.setErrorMsg("No response from FedEx");
+                shipTx.setProcessed(false);
+                shipTx.saveEx(trxName);
+                return false;
+            }
+            
+            // Check response status
+            if ("SUCCESS".equals(response.getHighestSeverity())) {
+                // Save tracking information
+                shipTx.setTrackingNo(response.getTrackingNumber());
+                shipTx.setMasterTrackingNo(
+                    response.getMasterTrackingNumber());
+                shipTx.setShipmentCost(response.getShipmentCost());
+                shipTx.setLabelImage(response.getLabelImage());
+                shipTx.setLabelFormat(response.getLabelFormat());
+                shipTx.setProcessed(true);
+                shipTx.setErrorMsg(null);
+                shipTx.saveEx(trxName);
+                
+                log.info("Shipment processed successfully. Tracking: " + 
+                    response.getTrackingNumber());
+                return true;
+            } else {
+                // Handle errors
+                String errorMsg = response.getErrorMessage();
+                shipTx.setErrorMsg(errorMsg);
+                shipTx.setProcessed(false);
+                shipTx.saveEx(trxName);
+                
+                log.warning("Shipment failed: " + errorMsg);
+                return false;
+            }
+            
+        } catch (Exception e) {
+            log.severe("Error processing shipment: " + e.getMessage());
+            shipTx.setErrorMsg(e.getMessage());
+            shipTx.setProcessed(false);
+            shipTx.saveEx(trxName);
+            return false;
+        }
+    }
+    
+    @Override
+    public boolean rateInquiry(Properties ctx, 
+                                MShippingTransaction shipTx, 
+                                boolean isPriviledgedRate, 
+                                String trxName) {
+        try {
+            log.info("FedEx rate inquiry: " + shipTx.getDocumentNo());
+            
+            // Get credentials
+            String accountNumber = getAccountNumber(shipTx);
+            String meterNumber = getMeterNumber(shipTx);
+            String key = getAccountKey(shipTx);
+            String password = getPassword(shipTx);
+            
+            // Build rate request
+            FedExRateRequest request = new FedExRateRequest();
+            request.setAccountNumber(accountNumber);
+            request.setMeterNumber(meterNumber);
+            request.setKey(key);
+            request.setPassword(password);
+            
+            // Use account rates if privileged
+            if (isPriviledgedRate) {
+                request.setRateRequestType("ACCOUNT");
+            } else {
+                request.setRateRequestType("LIST");
+            }
+            
+            // Origin and destination
+            MLocation shipperLoc = shipTx.getShipperLocation();
+            MLocation recipientLoc = shipTx.getRecipientLocation();
+            
+            if (shipperLoc != null) {
+                request.setOriginPostalCode(shipperLoc.getPostal());
+                request.setOriginCountry(
+                    shipperLoc.getCountry().getCountryCode());
+            }
+            
+            if (recipientLoc != null) {
+                request.setDestinationPostalCode(recipientLoc.getPostal());
+                request.setDestinationCountry(
+                    recipientLoc.getCountry().getCountryCode());
+            }
+            
+            // Package details
+            request.setWeight(shipTx.getWeight());
+            request.setWeightUnit(shipTx.getWeightUnit());
+            request.setLength(shipTx.getLength());
+            request.setWidth(shipTx.getWidth());
+            request.setHeight(shipTx.getHeight());
+            request.setDimensionUnit(shipTx.getDimensionUnit());
+            
+            // Send request
+            FedExRateResponse response = 
+                sendRateRequest(FEDEX_RATE_URL, request);
+            
+            if (response == null) {
+                shipTx.setErrorMsg("No rate response from FedEx");
+                return false;
+            }
+            
+            // Process rate options
+            if ("SUCCESS".equals(response.getHighestSeverity())) {
+                FedExRate[] rates = response.getRates();
+                if (rates != null && rates.length > 0) {
+                    // Save rates to transaction
+                    StringBuilder rateInfo = new StringBuilder();
+                    for (FedExRate rate : rates) {
+                        rateInfo.append(rate.getServiceType())
+                            .append(": ")
+                            .append(rate.getTotalCharges())
+                            .append(" ")
+                            .append(rate.getCurrency())
+                            .append("\n");
+                    }
+                    shipTx.setRateInfo(rateInfo.toString());
+                    
+                    // Set the first rate as default
+                    shipTx.setShipmentCost(rates[0].getTotalCharges());
+                    shipTx.saveEx(trxName);
+                    
+                    log.info("Rate inquiry successful. " + 
+                        rates.length + " rates found");
+                    return true;
+                }
+            }
+            
+            String errorMsg = response.getErrorMessage();
+            shipTx.setErrorMsg(errorMsg);
+            log.warning("Rate inquiry failed: " + errorMsg);
+            return false;
+            
+        } catch (Exception e) {
+            log.severe("Error in rate inquiry: " + e.getMessage());
+            shipTx.setErrorMsg(e.getMessage());
+            return false;
+        }
+    }
+    
+    @Override
+    public boolean voidShipment(Properties ctx, 
+                                 MShippingTransaction shipTx, 
+                                 String trxName) {
+        try {
+            log.info("Voiding FedEx shipment: " + 
+                shipTx.getTrackingNo());
+            
+            if (shipTx.getTrackingNo() == null || 
+                shipTx.getTrackingNo().length() == 0) {
+                shipTx.setErrorMsg("No tracking number to void");
+                return false;
+            }
+            
+            // Get credentials
+            String accountNumber = getAccountNumber(shipTx);
+            String meterNumber = getMeterNumber(shipTx);
+            String key = getAccountKey(shipTx);
+            String password = getPassword(shipTx);
+            
+            // Build void request
+            FedExVoidRequest request = new FedExVoidRequest();
+            request.setAccountNumber(accountNumber);
+            request.setMeterNumber(meterNumber);
+            request.setKey(key);
+            request.setPassword(password);
+            request.setTrackingNumber(shipTx.getTrackingNo());
+            request.setShipDate(shipTx.getShipDate());
+            
+            // Send request
+            FedExVoidResponse response = 
+                sendVoidRequest(FEDEX_SHIP_URL, request);
+            
+            if (response == null) {
+                shipTx.setErrorMsg("No response from FedEx");
+                return false;
+            }
+            
+            // Check response
+            if ("SUCCESS".equals(response.getHighestSeverity())) {
+                shipTx.setIsVoided(true);
+                shipTx.setProcessed(false);
+                shipTx.saveEx(trxName);
+                
+                log.info("Shipment voided successfully: " + 
+                    shipTx.getTrackingNo());
+                return true;
+            } else {
+                String errorMsg = response.getErrorMessage();
+                shipTx.setErrorMsg(errorMsg);
+                log.warning("Void failed: " + errorMsg);
+                return false;
+            }
+            
+        } catch (Exception e) {
+            log.severe("Error voiding shipment: " + e.getMessage());
+            shipTx.setErrorMsg(e.getMessage());
+            return false;
+        }
+    }
+    
+    // Helper methods
+    
+    private String getAccountNumber(MShippingTransaction shipTx) {
+        // Get from configuration
+        return "123456789";
+    }
+    
+    private String getMeterNumber(MShippingTransaction shipTx) {
+        return "987654321";
+    }
+    
+    private String getAccountKey(MShippingTransaction shipTx) {
+        return "YOUR_FEDEX_KEY";
+    }
+    
+    private String getPassword(MShippingTransaction shipTx) {
+        return "YOUR_FEDEX_PASSWORD";
+    }
+    
+    private String mapServiceType(String shippingMethod) {
+        // Map iDempiere shipping method to FedEx service type
+        if ("FEDEX_GROUND".equals(shippingMethod))
+            return "FEDEX_GROUND";
+        else if ("FEDEX_2DAY".equals(shippingMethod))
+            return "FEDEX_2_DAY";
+        else if ("FEDEX_OVERNIGHT".equals(shippingMethod))
+            return "STANDARD_OVERNIGHT";
+        return "FEDEX_GROUND";
+    }
+    
+    private String mapPackagingType(String packagingType) {
+        // Map to FedEx packaging types
+        if ("BOX".equals(packagingType))
+            return "YOUR_PACKAGING";
+        return "YOUR_PACKAGING";
+    }
+    
+    private FedExShipResponse sendShipRequest(String url, 
+                                               FedExShipRequest request) {
+        // Implementation using SOAP or REST client
+        // Returns parsed response
+        return new FedExShipResponse(); // Simplified
+    }
+    
+    private FedExRateResponse sendRateRequest(String url, 
+                                               FedExRateRequest request) {
+        // Implementation using SOAP or REST client
+        return new FedExRateResponse(); // Simplified
+    }
+    
+    private FedExVoidResponse sendVoidRequest(String url, 
+                                               FedExVoidRequest request) {
+        // Implementation using SOAP or REST client
+        return new FedExVoidResponse(); // Simplified
+    }
+}
+```
+
+## MShippingTransaction Model
+
+The shipping transaction provides access to shipment data:
+
+```java
+public class MShippingTransaction extends X_M_ShippingTransaction {
+    // Document information
+    public String getDocumentNo();
+    public Date getShipDate();
+    
+    // Shipper information
+    public String getShipperName();
+    public MLocation getShipperLocation();
+    public String getShipperPhone();
+    
+    // Recipient information
+    public String getRecipientName();
+    public MLocation getRecipientLocation();
+    public String getRecipientPhone();
+    
+    // Shipping details
+    public String getShippingMethod();
+    public String getPackagingType();
+    public int getPackageCount();
+    
+    // Package dimensions
+    public BigDecimal getWeight();
+    public String getWeightUnit();
+    public BigDecimal getLength();
+    public BigDecimal getWidth();
+    public BigDecimal getHeight();
+    public String getDimensionUnit();
+    
+    // Insurance
+    public BigDecimal getInsuredValue();
+    public String getCurrencyCode();
+    
+    // Results
+    public void setTrackingNo(String trackingNo);
+    public String getTrackingNo();
+    public void setMasterTrackingNo(String masterTrackingNo);
+    public void setShipmentCost(BigDecimal cost);
+    public void setLabelImage(byte[] image);
+    public void setLabelFormat(String format);
+    public void setErrorMsg(String msg);
+    public void setProcessed(boolean processed);
+    public void setIsVoided(boolean voided);
+    public void setRateInfo(String info);
+}
+```
+
+## Shipment Processing Flow
+
+1. **Rate Inquiry** (Optional): Get shipping costs before creating shipment
+2. **Shipment Creation**: Process shipment and obtain tracking number
+3. **Label Printing**: Print shipping label from returned image
+4. **Void Shipment** (If needed): Cancel shipment before pickup
+
+## Best Practices
+
+1. **Error Handling**: Always save error messages to transaction
+2. **Logging**: Log all API requests and responses
+3. **Testing**: Use carrier sandbox/test environments
+4. **Address Validation**: Validate addresses before submission
+5. **Label Storage**: Store label images in database or file system
+6. **Tracking**: Save all tracking numbers for reference
+7. **Configuration**: Store credentials securely
+8. **Timeouts**: Set appropriate connection timeouts
+9. **Retry Logic**: Implement retry for transient failures
+
+## Testing
+
+```java
+public class FedexShipmentProcessorTest {
+    
+    @Test
+    public void testRateInquiry() {
+        FedexShipmentProcessor processor = 
+            new FedexShipmentProcessor();
+        Properties ctx = Env.getCtx();
+        MShippingTransaction shipTx = createTestTransaction();
+        
+        boolean success = processor.rateInquiry(
+            ctx, shipTx, false, null);
+        
+        assertTrue("Rate inquiry should succeed", success);
+        assertNotNull("Rate info should be populated", 
+            shipTx.getRateInfo());
+    }
+    
+    @Test
+    public void testShipmentProcessing() {
+        FedexShipmentProcessor processor = 
+            new FedexShipmentProcessor();
+        Properties ctx = Env.getCtx();
+        MShippingTransaction shipTx = createTestTransaction();
+        
+        boolean success = processor.processShipment(
+            ctx, shipTx, null);
+        
+        assertTrue("Shipment should process successfully", success);
+        assertNotNull("Tracking number should be assigned", 
+            shipTx.getTrackingNo());
+        assertTrue("Transaction should be processed", 
+            shipTx.isProcessed());
+    }
+}
+```
+
+## Related Topics
+
+- [Plugin Extensions](/api/plugin-extensions): Extension point framework
+- [Payment Processors](/api/payment-processors): Payment gateway integration
+- [Tax Providers](/api/tax-providers): Tax calculation integration

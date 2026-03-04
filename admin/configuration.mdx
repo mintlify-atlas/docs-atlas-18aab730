@@ -1,0 +1,325 @@
+---
+title: System Configuration
+description: Configure iDempiere system settings, environment variables, and application properties
+---
+
+## Overview
+
+iDempiere system configuration is managed through environment properties files and runtime settings. Proper configuration is essential for connecting to databases, configuring application servers, and managing system resources.
+
+## Configuration Files
+
+### Environment Properties
+
+The main configuration file is `idempiereEnv.properties`, which contains all system-wide settings.
+
+<Tip>
+Use the installation console or GUI installer to generate configuration files automatically. Manual editing should only be done by experienced administrators.
+</Tip>
+
+#### Core Settings
+
+```properties title="idempiereEnv.properties"
+#idempiere home
+IDEMPIERE_HOME=/opt/idempiere-server
+
+#Java home
+JAVA_HOME=/usr/lib/jvm/java-11-openjdk
+
+#Java runtime options
+IDEMPIERE_JAVA_OPTIONS=-Xms64M -Xmx512M
+```
+
+#### Database Configuration
+
+```properties title="idempiereEnv.properties"
+#Type of database: postgresql|oracle|oracleXE
+ADEMPIERE_DB_TYPE=PostgreSQL
+ADEMPIERE_DB_EXISTS=N
+
+#Path to database specific sql scripts
+ADEMPIERE_DB_PATH=postgresql
+
+#Database server host name
+ADEMPIERE_DB_SERVER=localhost
+
+#Database port: oracle[1521], postgresql[5432]
+ADEMPIERE_DB_PORT=5432
+
+#Database name
+ADEMPIERE_DB_NAME=idempiere
+
+#Database system user password
+ADEMPIERE_DB_SYSTEM=postgres
+
+#Database user name
+ADEMPIERE_DB_USER=adempiere
+
+#Database user password
+ADEMPIERE_DB_PASSWORD=adempiere
+```
+
+#### Application Server Settings
+
+```properties title="idempiereEnv.properties"
+#Application server host name
+ADEMPIERE_APPS_SERVER=localhost
+ADEMPIERE_WEB_ALIAS=localhost
+
+#Application server ports
+ADEMPIERE_WEB_PORT=8080
+ADEMPIERE_SSL_PORT=8443
+```
+
+## Security Configuration
+
+### Keystore Settings
+
+iDempiere uses a keystore for SSL certificates and code signing.
+
+```properties title="idempiereEnv.properties"
+#Keystore setting
+ADEMPIERE_KEYSTORE=/opt/idempiere-server/keystore/myKeystore
+ADEMPIERE_KEYSTOREWEBALIAS=adempiere
+ADEMPIERE_KEYSTORECODEALIAS=adempiere
+ADEMPIERE_KEYSTOREPASS=myPassword
+```
+
+### Certificate Configuration
+
+```properties title="idempiereEnv.properties"
+#Certificate details
+ADEMPIERE_CERT_CN=localhost
+ADEMPIERE_CERT_ORG=iDempiere Bazaar
+ADEMPIERE_CERT_ORG_UNIT=iDempiereUser
+ADEMPIERE_CERT_LOCATION=myTown
+ADEMPIERE_CERT_STATE=CA
+ADEMPIERE_CERT_COUNTRY=US
+```
+
+<Warning>
+Never commit keystore passwords to version control. Use environment variables or secure vaults for production systems.
+</Warning>
+
+## Mail Server Configuration
+
+Configure email settings for system notifications and document delivery.
+
+```properties title="idempiereEnv.properties"
+#Mail server setting
+ADEMPIERE_MAIL_SERVER=smtp.example.com
+ADEMPIERE_ADMIN_EMAIL=admin@example.com
+ADEMPIERE_MAIL_USER=smtp-user
+ADEMPIERE_MAIL_PASSWORD=smtp-password
+```
+
+## Connection Pool Settings
+
+iDempiere uses HikariCP for database connection pooling. Configuration is managed in `hikaricp.properties`.
+
+```properties title="hikaricp.properties"
+# Maximum pool size
+maximumPoolSize=50
+
+# Minimum idle connections
+minimumIdle=10
+
+# Connection timeout (milliseconds)
+connectionTimeout=30000
+
+# Idle timeout (milliseconds)
+idleTimeout=600000
+
+# Maximum lifetime (milliseconds)
+maxLifetime=1800000
+```
+
+## Runtime Properties
+
+The `idempiere.properties` file stores runtime connection information and is generated during installation.
+
+```properties title="idempiere.properties (example)"
+#Connection configuration
+Connection=CConnection[name=server{server-idempiere-adempiere},\
+  AppsHost=localhost,Profile=L,type=PostgreSQL,\
+  DBhost=localhost,DBport=5432,DBname=idempiere,\
+  BQ=false,FW=false,UID=adempiere,PWD=***]
+```
+
+<Warning>
+The `idempiere.properties` file may contain sensitive information. Protect it with appropriate file permissions (e.g., `chmod 600`).
+</Warning>
+
+## Environment Variables
+
+System administrators can set environment variables to override configuration:
+
+<Steps>
+  <Step title="Set IDEMPIERE_HOME">
+    ```bash
+    export IDEMPIERE_HOME=/opt/idempiere-server
+    ```
+  </Step>
+  
+  <Step title="Configure database connection">
+    ```bash
+    export ADEMPIERE_DB_SERVER=db.example.com
+    export ADEMPIERE_DB_PORT=5432
+    export ADEMPIERE_DB_NAME=idempiere_prod
+    export ADEMPIERE_DB_USER=adempiere
+    export ADEMPIERE_DB_PASSWORD=secure_password
+    ```
+  </Step>
+  
+  <Step title="Set Java options">
+    ```bash
+    export IDEMPIERE_JAVA_OPTIONS="-Xms2G -Xmx8G -XX:+UseG1GC"
+    ```
+  </Step>
+</Steps>
+
+## Configuration Scripts
+
+### Unix/Linux Environment
+
+The `myEnvironment.sh` script loads all configuration variables:
+
+```bash title="myEnvironment.sh"
+#!/bin/sh
+IDEMPIERE_HOME="/opt/idempiere-server"
+export IDEMPIERE_HOME
+
+JAVA_HOME="/usr/lib/jvm/java-11-openjdk"
+export JAVA_HOME
+
+ADEMPIERE_DB_SERVER="localhost"
+export ADEMPIERE_DB_SERVER
+
+# Load password from secure storage
+ADEMPIERE_DB_PASSWORD="$($IDEMPIERE_HOME/utils/getVar.sh ADEMPIERE_DB_PASSWORD)"
+export ADEMPIERE_DB_PASSWORD
+```
+
+## Performance Tuning
+
+### Java Memory Settings
+
+Adjust heap size based on your workload:
+
+- **Small installations**: `-Xms512M -Xmx2G`
+- **Medium installations**: `-Xms2G -Xmx8G`
+- **Large installations**: `-Xms4G -Xmx16G`
+
+### Garbage Collection
+
+Recommended GC settings for production:
+
+```bash
+IDEMPIERE_JAVA_OPTIONS="-Xms4G -Xmx8G -XX:+UseG1GC \
+  -XX:MaxGCPauseMillis=200 -XX:ParallelGCThreads=4 \
+  -XX:ConcGCThreads=2 -XX:InitiatingHeapOccupancyPercent=45"
+```
+
+## System Properties
+
+### PostgreSQL Native Features
+
+Enable PostgreSQL-specific optimizations:
+
+```bash
+-DPostgreSQLNative=Y
+```
+
+### Connection Management
+
+For high-concurrency environments:
+
+```properties
+# In hikaricp.properties
+maximumPoolSize=100
+minimumIdle=20
+connectionTimeout=20000
+```
+
+## Configuration Validation
+
+Verify your configuration:
+
+<Steps>
+  <Step title="Test database connection">
+    ```bash
+    cd $IDEMPIERE_HOME/utils
+    ./RUN_DBTest.sh
+    ```
+  </Step>
+  
+  <Step title="Check environment variables">
+    ```bash
+    source ./myEnvironment.sh
+    env | grep ADEMPIERE
+    ```
+  </Step>
+  
+  <Step title="Validate Java settings">
+    ```bash
+    $JAVA_HOME/bin/java -version
+    echo $IDEMPIERE_JAVA_OPTIONS
+    ```
+  </Step>
+</Steps>
+
+## Best Practices
+
+<Check>
+  Use version control for configuration files, but exclude sensitive data
+</Check>
+
+<Check>
+  Document all custom configuration changes
+</Check>
+
+<Check>
+  Use separate configuration for development, staging, and production
+</Check>
+
+<Check>
+  Regularly review and update security certificates
+</Check>
+
+<Check>
+  Monitor connection pool utilization and adjust as needed
+</Check>
+
+## Troubleshooting
+
+### Connection Issues
+
+If iDempiere cannot connect to the database:
+
+1. Verify database server is running
+2. Check firewall rules allow connections on database port
+3. Confirm credentials in `idempiereEnv.properties`
+4. Review connection pool settings
+
+### Memory Issues
+
+If experiencing OutOfMemory errors:
+
+1. Increase heap size in `IDEMPIERE_JAVA_OPTIONS`
+2. Enable heap dump on OOM: `-XX:+HeapDumpOnOutOfMemoryError`
+3. Analyze heap dumps with tools like Eclipse MAT
+
+### SSL Certificate Errors
+
+If SSL connections fail:
+
+1. Verify keystore path and password
+2. Check certificate validity dates
+3. Ensure certificate matches server hostname
+4. Review Java security policy settings
+
+## See Also
+
+- [Database Setup](/admin/database-setup) - Database installation and configuration
+- [User Management](/admin/user-management) - Managing users and roles
+- [Backup & Restore](/admin/backup-restore) - Data protection strategies

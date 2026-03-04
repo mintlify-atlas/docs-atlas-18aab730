@@ -1,0 +1,649 @@
+---
+title: Model API (PO)
+description: Complete reference for the Persistent Object (PO) class, the foundation of iDempiere's data model
+---
+
+## Overview
+
+The `PO` (Persistent Object) class is the abstract base class for all persistent objects in iDempiere. It provides the foundation for database operations, value management, and the model-view-controller pattern implementation.
+
+**Package:** `org.compiere.model`
+
+**Source:** `org.adempiere.base/src/org/compiere/model/PO.java`
+
+**Key Features:**
+- CRUD operations (Create, Read, Update, Delete)
+- Value getters and setters with type safety
+- Transaction management
+- Validation hooks (beforeSave, afterSave, beforeDelete, afterDelete)
+- Context and tenant management
+- UUID and multi-key support
+
+## Constructors
+
+### Create New Record
+
+```java
+public PO(Properties ctx)
+```
+
+<ParamField path="ctx" type="Properties">
+  Context containing session and environment variables
+</ParamField>
+
+### Load by ID
+
+```java
+public PO(Properties ctx, int ID, String trxName)
+```
+
+<ParamField path="ctx" type="Properties">
+  Context
+</ParamField>
+
+<ParamField path="ID" type="int">
+  The unique ID of the record (0 for new record)
+</ParamField>
+
+<ParamField path="trxName" type="String">
+  Transaction name (null for auto-commit)
+</ParamField>
+
+### Load by UUID
+
+```java
+public PO(Properties ctx, String UUID, String trxName)
+```
+
+<ParamField path="ctx" type="Properties">
+  Context
+</ParamField>
+
+<ParamField path="UUID" type="String">
+  The unique UUID of the record (empty string "" for new record)
+</ParamField>
+
+<ParamField path="trxName" type="String">
+  Transaction name
+</ParamField>
+
+### Load from ResultSet
+
+```java
+public PO(Properties ctx, ResultSet rs, String trxName)
+```
+
+<ParamField path="ctx" type="Properties">
+  Context
+</ParamField>
+
+<ParamField path="rs" type="ResultSet">
+  ResultSet positioned at current row to load
+</ParamField>
+
+<ParamField path="trxName" type="String">
+  Transaction name
+</ParamField>
+
+## Value Management
+
+### Get Value by Column Name
+
+```java
+public final Object get_Value(String columnName)
+```
+
+<ParamField path="columnName" type="String" required>
+  Name of the column
+</ParamField>
+
+<ResponseField name="return" type="Object">
+  Current value of the column, or null if not set
+</ResponseField>
+
+**Example:**
+
+```java
+MOrder order = new MOrder(ctx, 1000000, trxName);
+String docNo = (String) order.get_Value("DocumentNo");
+Integer bpID = (Integer) order.get_Value("C_BPartner_ID");
+```
+
+### Get Typed Values
+
+```java
+public int get_ValueAsInt(String columnName)
+public String get_ValueAsString(String columnName)
+public boolean get_ValueAsBoolean(String columnName)
+```
+
+<ParamField path="columnName" type="String" required>
+  Name of the column
+</ParamField>
+
+<ResponseField name="return" type="int | String | boolean">
+  Value converted to the specified type
+</ResponseField>
+
+**Example:**
+
+```java
+MOrder order = new MOrder(ctx, 1000000, trxName);
+int bpID = order.get_ValueAsInt("C_BPartner_ID");
+String docNo = order.get_ValueAsString("DocumentNo");
+boolean isSOTrx = order.get_ValueAsBoolean("IsSOTrx");
+```
+
+### Get Old Value
+
+```java
+public final Object get_ValueOld(String columnName)
+public int get_ValueOldAsInt(String columnName)
+```
+
+<ParamField path="columnName" type="String" required>
+  Name of the column
+</ParamField>
+
+<ResponseField name="return" type="Object | int">
+  Previous value before modification
+</ResponseField>
+
+### Set Value
+
+```java
+public final boolean set_Value(String columnName, Object value)
+```
+
+<ParamField path="columnName" type="String" required>
+  Name of the column
+</ParamField>
+
+<ParamField path="value" type="Object" required>
+  Value to set (must match column type)
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  true if value was set successfully, false if column is read-only or virtual
+</ResponseField>
+
+**Example:**
+
+```java
+MOrder order = new MOrder(ctx, 0, trxName); // new record
+order.set_Value("C_BPartner_ID", 1000001);
+order.set_Value("DateOrdered", new Timestamp(System.currentTimeMillis()));
+order.set_Value("IsSOTrx", true);
+```
+
+### Set Value Without Checks
+
+```java
+public final boolean set_ValueNoCheck(String columnName, Object value)
+```
+
+<ParamField path="columnName" type="String" required>
+  Name of the column
+</ParamField>
+
+<ParamField path="value" type="Object" required>
+  Value to set
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  true if successful
+</ResponseField>
+
+<Note>
+Use this method carefully - it bypasses standard validation and updateable checks. Primarily used for system fields like Created, CreatedBy, etc.
+</Note>
+
+## Save Operations
+
+### Save
+
+```java
+public boolean save()
+```
+
+<ResponseField name="return" type="boolean">
+  true if save was successful, false otherwise
+</ResponseField>
+
+Saves the record to the database. For new records, performs INSERT. For existing records, performs UPDATE only if values changed.
+
+**Example:**
+
+```java
+MOrder order = new MOrder(ctx, 0, trxName);
+order.setC_BPartner_ID(1000001);
+order.setC_DocType_ID(1000000);
+order.setDateOrdered(new Timestamp(System.currentTimeMillis()));
+
+if (order.save()) {
+    log.info("Order saved: " + order.getDocumentNo());
+} else {
+    log.severe("Failed to save order: " + CLogger.retrieveErrorString(""));
+}
+```
+
+### Save with Exception
+
+```java
+public void saveEx() throws AdempiereException
+```
+
+<ResponseField name="throws" type="AdempiereException">
+  Thrown if save fails
+</ResponseField>
+
+Same as save() but throws exception on failure instead of returning false.
+
+**Example:**
+
+```java
+try {
+    MOrder order = new MOrder(ctx, 0, trxName);
+    order.setC_BPartner_ID(1000001);
+    order.setC_DocType_ID(1000000);
+    order.saveEx();
+    log.info("Order saved successfully");
+} catch (AdempiereException e) {
+    log.severe("Save failed: " + e.getMessage());
+    throw e;
+}
+```
+
+### Save with Transaction
+
+```java
+public boolean save(String trxName)
+public void saveEx(String trxName) throws AdempiereException
+```
+
+<ParamField path="trxName" type="String" required>
+  Transaction name to use for this save operation
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  true if save was successful (save() version only)
+</ResponseField>
+
+## Delete Operations
+
+### Delete
+
+```java
+public boolean delete(boolean force)
+```
+
+<ParamField path="force" type="boolean" required>
+  If true, delete even if record is processed
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  true if delete was successful, false otherwise
+</ResponseField>
+
+**Example:**
+
+```java
+MOrder order = new MOrder(ctx, 1000000, trxName);
+if (order.delete(false)) {
+    log.info("Order deleted successfully");
+} else {
+    log.severe("Failed to delete: " + CLogger.retrieveErrorString(""));
+}
+```
+
+### Delete with Exception
+
+```java
+public void deleteEx(boolean force) throws AdempiereException
+public void deleteEx(boolean force, String trxName) throws AdempiereException
+```
+
+<ParamField path="force" type="boolean" required>
+  If true, delete even if record is processed
+</ParamField>
+
+<ParamField path="trxName" type="String">
+  Transaction name (optional)
+</ParamField>
+
+<ResponseField name="throws" type="AdempiereException">
+  Thrown if delete fails
+</ResponseField>
+
+## Validation Hooks
+
+### Before Save
+
+```java
+protected boolean beforeSave(boolean newRecord)
+```
+
+<ParamField path="newRecord" type="boolean">
+  true if this is a new record being inserted
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  true to continue save, false to abort
+</ResponseField>
+
+Override this method to perform validation and business logic before saving.
+
+**Example:**
+
+```java
+@Override
+protected boolean beforeSave(boolean newRecord) {
+    // Validate business partner
+    if (getC_BPartner_ID() <= 0) {
+        log.saveError("FillMandatory", Msg.getElement(getCtx(), "C_BPartner_ID"));
+        return false;
+    }
+    
+    // Set default values for new records
+    if (newRecord) {
+        if (getDateOrdered() == null)
+            setDateOrdered(new Timestamp(System.currentTimeMillis()));
+    }
+    
+    return true;
+}
+```
+
+### After Save
+
+```java
+protected boolean afterSave(boolean newRecord, boolean success)
+```
+
+<ParamField path="newRecord" type="boolean">
+  true if this was a new record insertion
+</ParamField>
+
+<ParamField path="success" type="boolean">
+  true if save operation succeeded
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  true to commit, false to rollback
+</ResponseField>
+
+**Example:**
+
+```java
+@Override
+protected boolean afterSave(boolean newRecord, boolean success) {
+    if (!success)
+        return false;
+        
+    // Create order lines for new order
+    if (newRecord) {
+        createDefaultLines();
+    }
+    
+    // Update totals
+    if (!newRecord && (is_ValueChanged("GrandTotal") || is_ValueChanged("C_Currency_ID"))) {
+        updateBPartnerBalance();
+    }
+    
+    return true;
+}
+```
+
+### Before Delete
+
+```java
+protected boolean beforeDelete()
+```
+
+<ResponseField name="return" type="boolean">
+  true to continue delete, false to abort
+</ResponseField>
+
+**Example:**
+
+```java
+@Override
+protected boolean beforeDelete() {
+    // Check if order has shipments
+    String sql = "SELECT COUNT(*) FROM M_InOut WHERE C_Order_ID=?";
+    int count = DB.getSQLValue(get_TrxName(), sql, getC_Order_ID());
+    if (count > 0) {
+        log.saveError("Error", "Cannot delete order with shipments");
+        return false;
+    }
+    return true;
+}
+```
+
+### After Delete
+
+```java
+protected boolean afterDelete(boolean success)
+```
+
+<ParamField path="success" type="boolean">
+  true if delete succeeded
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  true to commit, false to rollback
+</ResponseField>
+
+## State Methods
+
+### Check if New
+
+```java
+public boolean is_new()
+```
+
+<ResponseField name="return" type="boolean">
+  true if this is a new record not yet saved to database
+</ResponseField>
+
+### Check if Changed
+
+```java
+public boolean is_Changed()
+public boolean is_ValueChanged(String columnName)
+```
+
+<ParamField path="columnName" type="String">
+  Column name to check
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  true if any value changed, or if specified column changed
+</ResponseField>
+
+**Example:**
+
+```java
+if (order.is_ValueChanged("C_BPartner_ID")) {
+    // Business partner changed, update pricing
+    order.setPriceList();
+}
+```
+
+## Identity Methods
+
+### Get ID
+
+```java
+public int get_ID()
+```
+
+<ResponseField name="return" type="int">
+  The record ID, or 0 for new records
+</ResponseField>
+
+### Get UUID
+
+```java
+public String get_UUID()
+```
+
+<ResponseField name="return" type="String">
+  The record UUID
+</ResponseField>
+
+### Get Table Information
+
+```java
+public String get_TableName()
+public int get_Table_ID()
+```
+
+<ResponseField name="return" type="String | int">
+  Table name or table ID
+</ResponseField>
+
+## Context Methods
+
+### Get Context
+
+```java
+public Properties getCtx()
+```
+
+<ResponseField name="return" type="Properties">
+  Current context
+</ResponseField>
+
+### Get Transaction
+
+```java
+public String get_TrxName()
+public void set_TrxName(String trxName)
+```
+
+<ParamField path="trxName" type="String">
+  Transaction name to set
+</ParamField>
+
+<ResponseField name="return" type="String">
+  Current transaction name
+</ResponseField>
+
+## Client/Org Methods
+
+### Get Client and Org
+
+```java
+public final int getAD_Client_ID()
+public final int getAD_Org_ID()
+```
+
+<ResponseField name="return" type="int">
+  Client ID or Organization ID
+</ResponseField>
+
+### Get Access Level
+
+```java
+protected abstract int get_AccessLevel()
+```
+
+<ResponseField name="return" type="int">
+  Access level constant (ACCESSLEVEL_SYSTEM, ACCESSLEVEL_CLIENT, ACCESSLEVEL_ORG, etc.)
+</ResponseField>
+
+Access levels:
+- `ACCESSLEVEL_SYSTEM = 4` - System data
+- `ACCESSLEVEL_CLIENT = 2` - Client data
+- `ACCESSLEVEL_ORG = 1` - Organization data
+- `ACCESSLEVEL_ALL = 7` - System shared data
+- `ACCESSLEVEL_SYSTEMCLIENT = 6` - System/Client data
+- `ACCESSLEVEL_CLIENTORG = 3` - Client/Org data
+
+## Query Timeout
+
+### Set Query Timeout
+
+```java
+public void set_QueryTimeout(int seconds)
+public int get_QueryTimeout()
+```
+
+<ParamField path="seconds" type="int">
+  Query timeout in seconds (default: 300)
+</ParamField>
+
+<ResponseField name="return" type="int">
+  Current query timeout in seconds
+</ResponseField>
+
+## Complete Example
+
+```java
+import java.sql.Timestamp;
+import java.util.Properties;
+import org.compiere.model.MOrder;
+import org.compiere.util.Env;
+import org.compiere.util.CLogger;
+
+public class OrderExample {
+    
+    public static void createOrder(Properties ctx, String trxName) {
+        // Create new sales order
+        MOrder order = new MOrder(ctx, 0, trxName);
+        
+        // Set mandatory fields
+        order.setC_BPartner_ID(1000001);
+        order.setC_DocType_ID(1000000);
+        order.setDateOrdered(new Timestamp(System.currentTimeMillis()));
+        order.setDatePromised(new Timestamp(System.currentTimeMillis()));
+        order.setM_Warehouse_ID(Env.getContextAsInt(ctx, "#M_Warehouse_ID"));
+        order.setIsSOTrx(true);
+        
+        // Save with exception handling
+        try {
+            order.saveEx();
+            CLogger.getCLogger(OrderExample.class).info(
+                "Created order: " + order.getDocumentNo() + 
+                " (ID=" + order.get_ID() + ")"
+            );
+        } catch (Exception e) {
+            CLogger.getCLogger(OrderExample.class).severe(
+                "Failed to create order: " + e.getMessage()
+            );
+            throw e;
+        }
+    }
+    
+    public static void updateOrder(Properties ctx, int orderId, String trxName) {
+        // Load existing order
+        MOrder order = new MOrder(ctx, orderId, trxName);
+        
+        if (order.get_ID() == 0) {
+            throw new IllegalArgumentException("Order not found: " + orderId);
+        }
+        
+        // Update description
+        String oldDesc = order.getDescription();
+        order.setDescription("Updated: " + new Timestamp(System.currentTimeMillis()));
+        
+        // Save only if changed
+        if (order.is_Changed()) {
+            if (order.save()) {
+                CLogger.getCLogger(OrderExample.class).info(
+                    "Updated order " + order.getDocumentNo() +
+                    " - Old desc: " + oldDesc +
+                    ", New desc: " + order.getDescription()
+                );
+            }
+        }
+    }
+}
+```
+
+## See Also
+
+- [Process API](/api/process-api) - Server process development
+- [Callout API](/api/callout-api) - Field validation and callouts
+- [Factory Pattern](/api/factory-pattern) - Custom model, process, and callout factories
